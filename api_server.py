@@ -44,6 +44,13 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 1000
     stream: Optional[bool] = False
 
+class CompletionRequest(BaseModel):
+    model: str
+    prompt: str
+    temperature: Optional[float] = 0.7
+    max_tokens: Optional[int] = 1000
+    stream: Optional[bool] = False
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     if request.url.path.startswith("/v1"):
@@ -381,6 +388,73 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         raise he
     except Exception as e:
         logger.error(f"Processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/completions")
+async def create_completion(request: Request, body: CompletionRequest):
+    chat_request = ChatCompletionRequest(
+        model=body.model,
+        messages=[Message(role="user", content=body.prompt)],
+        temperature=body.temperature,
+        max_tokens=body.max_tokens,
+        stream=body.stream
+    )
+    
+    backend = _dispatcher.get_backend(chat_request.model)
+    if not backend:
+        raise HTTPException(status_code=400, detail=f"Unsupported model: {chat_request.model}")
+
+    try:
+        if body.stream:
+            chunk_generator = await backend.generate(chat_request)
+            
+            async def convert_stream():
+                async for chunk in chunk_generator:
+                    # 转换格式后需要序列化为JSON字符串
+                    completion_chunk = {
+                        "id": chunk.get("id", f"cmpl-{uuid.uuid4()}"),
+                        "object": "text_completion.chunk",
+                        "created": chunk.get("created", int(time.time())),
+                        "model": chat_request.model,
+                        "choices": [{
+                            "text": chunk["choices"][0]["delta"].get("content", ""),
+                            "index": 0,
+                            "logprobs": None,
+                            "finish_reason": chunk["choices"][0].get("finish_reason")
+                        }]
+                    }
+                    # 添加SSE格式包装
+                    yield f"data: {json.dumps(completion_chunk)}\n\n"
+                
+                # 添加流结束标记
+                yield "data: [DONE]\n\n"
+            
+            return StreamingResponse(
+                convert_stream(),
+                media_type="text/event-stream"
+            )
+        else:
+            chat_response = await backend.generate(chat_request)
+            return JSONResponse({
+                "id": f"cmpl-{uuid.uuid4()}",
+                "object": "text_completion",
+                "created": int(time.time()),
+                "model": chat_request.model,
+                "choices": [{
+                    "text": chat_response["choices"][0]["message"]["content"],
+                    "index": 0,
+                    "logprobs": None,
+                    "finish_reason": "stop"
+                }],
+                "usage": chat_response.get("usage", {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                })
+            })
+            
+    except Exception as e:
+        logger.error(f"Completion error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
