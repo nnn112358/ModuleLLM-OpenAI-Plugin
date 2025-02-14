@@ -4,7 +4,7 @@ import yaml
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Union
 import logging
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -13,6 +13,8 @@ import json
 import asyncio
 from aiostream import stream
 from llm_client import LLMClient
+import aiohttp
+import base64
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -33,9 +35,14 @@ class Config:
 
 config = Config()
 
+class ContentItem(BaseModel):
+    type: str  # text/image_url
+    text: Optional[str] = None
+    image_url: Optional[dict] = None
+
 class Message(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[ContentItem]]
 
 class ChatCompletionRequest(BaseModel):
     model: str
@@ -210,19 +217,26 @@ class LlmClientBackend(BaseModelBackend):
             self.logger.debug(f"📡 Starting inference | ClientID:{id(client)} Query length:{len(query)}")
             
             loop = asyncio.get_event_loop()
-            sync_gen = client.inference_stream(query)
+            sync_gen = client.inference_stream(
+                query,
+                object_type="llm.utf-8"
+            )
+
+            sync_img = client.inference_stream(
+                query,
+                object_type="vlm.jpeg.stream.base64"
+            )
             
             while True:
                 try:
-                    # 使用闭包捕获生成器状态
                     def get_next():
                         try:
                             return next(sync_gen)
                         except StopIteration:
-                            return None  # 返回哨兵值代替抛出异常
+                            return None
                             
                     chunk = await loop.run_in_executor(None, get_next)
-                    if chunk is None:  # 检测到生成器结束
+                    if chunk is None:
                         break
                     yield chunk
                 except Exception as e:
@@ -251,15 +265,50 @@ class LlmClientBackend(BaseModelBackend):
             
         return keep_messages
 
+    async def download_image(self, url):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        image_data = await response.read()
+                        return base64.b64encode(image_data).decode('utf-8')
+                    self.logger.error(f"图片下载失败，状态码：{response.status}")
+                    return None
+        except Exception as e:
+            self.logger.error(f"图片下载异常：{str(e)}")
+            return None
+
     async def generate(self, request: ChatCompletionRequest):
         try:
             truncated_messages = self._truncate_history(request.messages)
             
-            query = "\n".join([
-                f"{m.role}: {m.content}" 
-                for m in truncated_messages 
-                if m.role != "system"
-            ])
+            query_lines = []
+            for m in truncated_messages:
+                if m.role == "system":
+                    continue
+                
+                if isinstance(m.content, list):
+                    text_parts = []
+                    for item in m.content:
+                        if item.type == "text":
+                            text_parts.append(item.text)
+                        elif item.type == "image_url":
+                            url = item.image_url.get("url", "")
+                            if url.startswith("data:image"):
+                                base64_data = url.split(",", 1)[1]
+                                text_parts.append(f"[图片Base64数据:{base64_data[:100]}...]")  # 截断防止过长
+                            else:
+                                base64_str = await self.download_image(url)
+                                if base64_str:
+                                    text_parts.append(f"[网络图片Base64数据:{base64_str[:100]}...]")
+                                else:
+                                    text_parts.append("[图片下载失败]")
+                    combined_content = " ".join(text_parts)
+                    query_lines.append(f"{m.role}: {combined_content}")
+                else:
+                    query_lines.append(f"{m.role}: {m.content}")
+            
+            query = "\n".join(query_lines)
             
             self.logger.debug(
                 f"Context truncated: Original {len(request.messages)} → Kept {len(truncated_messages)} "

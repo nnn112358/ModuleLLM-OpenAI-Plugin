@@ -42,9 +42,10 @@ class LLMClient:
     def _send_request(self, action: str, object: str, data: dict) -> str:
         """通用请求发送方法"""
         request_id = str(uuid.uuid4())
+        object_type = object.split('.')[0] if '.' in object else "llm"
         payload = {
             "request_id": request_id,
-            "work_id": self.work_id or "llm",
+            "work_id": self.work_id or object_type,
             "action": action,
             "object": object,
             "data": data
@@ -65,8 +66,8 @@ class LLMClient:
         request_id = self._send_request("setup", object, model_config)
         return self._wait_response(request_id)
 
-    def inference_stream(self, query: str) -> Generator[str, None, None]:
-        request_id = self._send_request("inference", "llm.utf-8", query)
+    def inference_stream(self, query: str, object_type: str = "llm.utf-8") -> Generator[str, None, None]:
+        request_id = self._send_request("inference", object_type, query)
         
         while True:
             response = json.loads(self.sock.recv(4096).decode())
