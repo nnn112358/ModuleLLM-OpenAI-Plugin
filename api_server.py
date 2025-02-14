@@ -180,19 +180,21 @@ class LlmClientBackend(BaseModelBackend):
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None, 
-                client.setup, 
-                {
-                    "model": self.config["model_name"],
-                    "response_format": "llm.utf-8.stream",
-                    "input": "llm.utf-8",
-                    "enoutput": True,
-                    "max_token_len": request.max_tokens,
-                    "temperature": request.temperature,
-                    "prompt": next(
-                        (m.content for m in request.messages if m.role == "system"),
-                        self.config.get("system_prompt", "You are a helpful assistant")
-                    )
-                }
+                lambda: client.setup(
+                    self.config["object"],
+                    {
+                        "model": self.config["model_name"],
+                        "response_format": self.config["response_format"],
+                        "input": self.config["input"],
+                        "enoutput": True,
+                        "max_token_len": request.max_tokens,
+                        "temperature": request.temperature,
+                        "prompt": next(
+                            (m.content for m in request.messages if m.role == "system"),
+                            self.config.get("system_prompt", "You are a helpful assistant")
+                        )
+                    }
+                )
             )
             return client
 
