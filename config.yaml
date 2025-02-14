@@ -1,0 +1,73 @@
+# config.yaml
+server:
+  host: 0.0.0.0
+  port: 8000
+
+models:
+  llama2-7b:
+    type: llama.cpp
+    path: ./models/llama-2-7b-chat.Q4_K_M.gguf
+    params:
+      n_ctx: 4096
+      n_gpu_layers: 35
+
+  # OpenAI API
+  gpt-3.5-turbo-proxy:
+    type: openai_proxy
+    api_key:
+    base_url: https://api.openai.com/v1
+    model: gpt-3.5-turbo
+
+  # DeepSeek API
+  deepseek-r1:
+    type: openai_proxy
+    api_key:
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: deepseek-r1
+
+  # ModuleLLM API
+  qwen2.5-0.5b:
+    type: tcp_client
+    host: "192.168.20.183" 
+    port: 10001
+    model_name: "qwen2.5-0.5B-prefill-20e"
+    object: "llm.setup"
+    pool_size: 2
+    system_prompt: |
+      You are a helpful assistant. 
+
+  Qwen2.5-0.5B-w8a16:
+    type: tcp_client
+    host: "192.168.20.183"
+    port: 10001
+    model_name: "Qwen2.5-0.5B-w8a16"
+    object: "llm.setup"
+    pool_size: 2
+    response_format: "llm.utf-8.stream"
+    input: "llm.utf-8"
+    system_prompt: |
+      You are a helpful assistant.
+
+  deepseek-r1-1.5B-ax630c:
+    type: tcp_client
+    host: "192.168.20.183"
+    port: 10001
+    model_name: "deepseek-r1-1.5B-ax630c"
+    object: "llm.setup"
+    pool_size: 1
+    response_format: "llm.utf-8.stream"
+    input: "llm.utf-8"
+    system_prompt: |
+      You are a helpful assistant.
+
+  internvl2.5-1B-ax630c:
+    type: tcp_client
+    host: "192.168.20.183"
+    port: 10001
+    model_name: "internvl2.5-1B-ax630c"
+    object: "vlm.setup"
+    pool_size: 1
+    response_format: "vlm.utf-8.stream"
+    input: "vlm.utf-8"
+    system_prompt: |
+      You are a helpful assistant.
