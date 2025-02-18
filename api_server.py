@@ -15,6 +15,7 @@ from aiostream import stream
 from llm_client import LLMClient
 import aiohttp
 import base64
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -48,6 +49,7 @@ class ChatCompletionRequest(BaseModel):
     model: str
     messages: List[Message]
     temperature: Optional[float] = 0.7
+    top_p: Optional[float] = 0.9
     max_tokens: Optional[int] = 1000
     stream: Optional[bool] = False
 
@@ -55,6 +57,7 @@ class CompletionRequest(BaseModel):
     model: str
     prompt: str
     temperature: Optional[float] = 0.7
+    top_p: Optional[float] = 0.9
     max_tokens: Optional[int] = 1000
     stream: Optional[bool] = False
 
@@ -154,17 +157,37 @@ class OpenAIProxyBackend(BaseModelBackend):
 
 class LlmClientBackend(BaseModelBackend):
     MAX_CONTEXT_LENGTH = 500
-    POOL_SIZE = 2  # 新增连接池大小限制
+    POOL_SIZE = 2
 
     def __init__(self, model_config):
         super().__init__(model_config)
-        self._client_pool = []       # 可用连接池
-        self._active_clients = {}    # 使用中的连接
+        self._client_pool = []
+        self._active_clients = {}
         self._pool_lock = asyncio.Lock()
         self.logger = logging.getLogger("api.client")
+        self._inference_executor = ThreadPoolExecutor(max_workers=self.POOL_SIZE)
+
+    async def _parse_content(self, content: Union[str, List[ContentItem]]) -> str:
+        if isinstance(content, list):
+            text_parts = []
+            for item in content:
+                if item.type == "text" and item.text:
+                    text_parts.append(item.text)
+                elif item.type == "image_url" and item.image_url:
+                    url = item.image_url.get("url", "")
+                    if url.startswith("data:image"):
+                        base64_data = url.split(",", 1)[1]
+                        text_parts.append(f"[图片Base64数据:{base64_data[:100]}...]")
+                    else:
+                        base64_str = await self.download_image(url)
+                        if base64_str:
+                            text_parts.append(f"[网络图片Base64数据:{base64_str[:100]}...]")
+            return " ".join(text_parts)
+        return str(content)
 
     async def _get_client(self, request):
-        async with self._pool_lock:
+        try:
+            await asyncio.wait_for(self._pool_lock.acquire(), timeout=5.0)
             # 尝试从池中获取可用连接
             if self._client_pool:
                 client = self._client_pool.pop()
@@ -183,7 +206,12 @@ class LlmClientBackend(BaseModelBackend):
             )
             self._active_clients[id(client)] = client
             
-            # 初始化连接
+            system_content = next(
+                (m.content for m in request.messages if m.role == "system"),
+                self.config.get("system_prompt", "You are a helpful assistant")
+            )
+            parsed_prompt = await self._parse_content(system_content)
+
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
                 None, 
@@ -196,6 +224,7 @@ class LlmClientBackend(BaseModelBackend):
                         "enoutput": True,
                         "max_token_len": request.max_tokens,
                         "temperature": request.temperature,
+                        "top_p": request.top_p,
                         "prompt": next(
                             (m.content for m in request.messages if m.role == "system"),
                             self.config.get("system_prompt", "You are a helpful assistant")
@@ -204,6 +233,8 @@ class LlmClientBackend(BaseModelBackend):
                 )
             )
             return client
+        finally:
+            self._pool_lock.release()
 
     async def _release_client(self, client):
         async with self._pool_lock:
@@ -222,6 +253,34 @@ class LlmClientBackend(BaseModelBackend):
                 object_type="llm.utf-8"
             )
 
+            while True:
+                try:
+                    def get_next():
+                        try:
+                            return next(sync_gen)
+                        except StopIteration:
+                            return None
+                            
+                    chunk = await loop.run_in_executor(
+                        self._inference_executor, 
+                        get_next
+                    )
+                    if chunk is None:
+                        break
+                    yield chunk
+                except Exception as e:
+                    self.logger.error(f"Inference error: {str(e)}")
+                    yield f"[ERROR: {str(e)}]"
+                    break
+        finally:
+            await self._release_client(client)
+
+    async def inference_jpeg(self, query: str, request: ChatCompletionRequest):
+        client = await self._get_client(request)
+        try:
+            self.logger.debug(f"📡 Starting inference | ClientID:{id(client)} Query length:{len(query)}")
+            
+            loop = asyncio.get_event_loop()
             sync_img = client.inference_stream(
                 query,
                 object_type="vlm.jpeg.stream.base64"
@@ -231,7 +290,7 @@ class LlmClientBackend(BaseModelBackend):
                 try:
                     def get_next():
                         try:
-                            return next(sync_gen)
+                            return next(sync_img)
                         except StopIteration:
                             return None
                             
@@ -448,6 +507,7 @@ async def create_completion(request: Request, body: CompletionRequest):
         messages=[Message(role="user", content=body.prompt)],
         temperature=body.temperature,
         max_tokens=body.max_tokens,
+        top_p=body.top_p,
         stream=body.stream
     )
     

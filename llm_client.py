@@ -8,17 +8,17 @@ import logging
 import threading
 
 logger = logging.getLogger("llm_client")
-logger.setLevel(logging.DEBUG)  # 根据需要调整级别
+logger.setLevel(logging.DEBUG)
 
 class LLMClient:
     def __init__(self, host: str = "localhost", port: int = 10001):
-        self._lock = threading.Lock()  # 添加线程锁
+        self._lock = threading.Lock()
         self.host = host
         self.port = port
         self.sock = None
-        self.work_id = None  # 保存服务端返回的work_id
-        self._initialized = False  # 新增初始化状态标记
-        self._connect()  # 添加连接方法
+        self.work_id = None
+        self._initialized = False
+        self._connect()
         
     def __enter__(self):
         self.connect()
@@ -40,7 +40,6 @@ class LLMClient:
             self.sock = None
 
     def _send_request(self, action: str, object: str, data: dict) -> str:
-        """通用请求发送方法"""
         request_id = str(uuid.uuid4())
         object_type = object.split('.')[0] if '.' in object else "llm"
         payload = {
@@ -97,12 +96,10 @@ class LLMClient:
         raise TimeoutError("No response from server")
 
     def connect(self):
-        """显式连接方法"""
         with self._lock:
             if not self.sock:
                 self._connect()
 
-# 使用示例
 if __name__ == "__main__":
     with LLMClient(host='192.168.20.183') as client:
         setup_response = client.setup("llm.setup", {
@@ -110,7 +107,7 @@ if __name__ == "__main__":
             "response_format": "llm.utf-8.stream",
             "input": "llm.utf-8",
             "enoutput": True,
-            "max_token_len": 256,
+            "max_token_len": 1023,
             "prompt": "You are a helpful assistant"
         })
         print("Setup response:", setup_response)
