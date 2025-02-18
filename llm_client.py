@@ -78,6 +78,14 @@ class LLMClient:
                 self.work_id = response["work_id"]
                 break
 
+    def stop_inference(self) -> dict:
+        request_id = self._send_request("pause", "llm.utf-8", {})
+        return request_id
+
+    def send_jpeg(self, query: str, object_type: str = "vlm.jpeg.base64") -> str:
+        request_id = self._send_request("inference", object_type, query)
+        return request_id
+
     def exit(self) -> dict:
         request_id = self._send_request("exit", "llm.utf-8", {})
         result = self._wait_response(request_id)
@@ -103,7 +111,7 @@ class LLMClient:
 if __name__ == "__main__":
     with LLMClient(host='192.168.20.183') as client:
         setup_response = client.setup("llm.setup", {
-            "model": "deepseek-r1-1.5B-ax630c",
+            "model": "Qwen2.5-0.5B-w8a16",
             "response_format": "llm.utf-8.stream",
             "input": "llm.utf-8",
             "enoutput": True,
@@ -112,8 +120,9 @@ if __name__ == "__main__":
         })
         print("Setup response:", setup_response)
 
-        for chunk in client.inference_stream("What's your name?"):
+        for chunk in client.inference_stream("给我讲一个故事"):
             print("Received chunk:", chunk)
+            client.stop_inference()
 
         exit_response = client.exit()
         print("Exit response:", exit_response)
