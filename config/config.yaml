@@ -6,26 +6,19 @@ server:
 models:
   llama2-7b:
     type: llama.cpp
-    path: ./models/llama-2-7b-chat.Q4_K_M.gguf
-    params:
-      n_ctx: 4096
-      n_gpu_layers: 35
 
-  # OpenAI API
   gpt-3.5-turbo-proxy:
     type: openai_proxy
-    api_key:
+    api_key: sk-
     base_url: https://api.openai.com/v1
     model: gpt-3.5-turbo
 
-  # DeepSeek API
   deepseek-r1:
     type: openai_proxy
-    api_key:
+    api_key: sk-
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     model: deepseek-r1
 
-  # ModuleLLM API
   qwen2.5-0.5b:
     type: tcp_client
     host: "192.168.20.183" 
@@ -33,6 +26,8 @@ models:
     model_name: "qwen2.5-0.5B-prefill-20e"
     object: "llm.setup"
     pool_size: 2
+    response_format: "llm.utf-8.stream"
+    input: "llm.utf-8"
     system_prompt: |
       You are a helpful assistant. 
 
@@ -71,3 +66,11 @@ models:
     input: "vlm.utf-8"
     system_prompt: |
       You are a helpful assistant.
+
+  qwen-vl-plus:
+    type: vision_model
+    api_key: sk-
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen-vl-plus
+    max_image_size: 4194304
+    image_timeout: 20
