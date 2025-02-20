@@ -248,8 +248,10 @@ class LlmClientBackend(BaseModelBackend):
             self.logger.debug(f"Starting inference | ClientID:{id(client)} Query length:{len(query)}")
             
             loop = asyncio.get_event_loop()
-            message = client.send_jpeg(base64_images[0], object_type="vlm.jpeg.base64")
-            print(f"jpeg date:{message}")
+            for i, image_data in enumerate(base64_images):
+                message = client.send_jpeg(image_data, object_type="vlm.jpeg.base64")
+                print(f"发送第 {i+1} 张JPEG数据: {message[:20]}...")
+            
             sync_gen = client.inference_stream(
                 query,
                 object_type="llm.utf-8"
