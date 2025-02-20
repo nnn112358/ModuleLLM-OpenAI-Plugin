@@ -21,7 +21,7 @@ class VisionModelBackend(BaseModelBackend):
                 "image_url": {"url": url}
             }
             
-        # 下载外部图片并转换为base64
+        # Download external image and convert to base64
         base64_str = await self.download_image(
             url, 
             max_size=self.MAX_IMAGE_SIZE,
@@ -30,7 +30,7 @@ class VisionModelBackend(BaseModelBackend):
         if not base64_str:
             raise HTTPException(
                 status_code=400,
-                detail=f"无法加载图片: {url}"
+                detail=f"Failed to load image: {url}"
             )
             
         return {
@@ -94,12 +94,12 @@ class VisionModelBackend(BaseModelBackend):
             if request.stream:
                 async def stream_wrapper():
                     async for chunk in response:
-                        # 统一错误处理
+                        # Unified error handling
                         if isinstance(chunk, dict) and "error" in chunk:
                             yield chunk
                             continue
                         
-                        # 转换为兼容格式
+                        # Convert to compatible format
                         yield {
                             "id": f"chatcmpl-{uuid.uuid4()}",
                             "object": "chat.completion.chunk",
@@ -117,7 +117,7 @@ class VisionModelBackend(BaseModelBackend):
                     yield {"choices": [{"delta": {}, "finish_reason": "stop"}]}
                 return stream_wrapper()
             
-            # 非流式响应添加usage信息
+            # Add usage info for non-stream response
             return {
                 "id": f"chatcmpl-{uuid.uuid4()}",
                 "object": "chat.completion",

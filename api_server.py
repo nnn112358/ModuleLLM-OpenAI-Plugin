@@ -98,13 +98,13 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                         print(f"Sending chunk: {json_chunk}")
                         yield f"data: {json_chunk}\n\n"
                 except asyncio.CancelledError:
-                    logger.warning("客户端提前断开连接，正在终止推理...")
+                    logger.warning("Client disconnected early, terminating inference...")
                     if backend and isinstance(backend, LlmClientBackend):
                         for task in backend._active_tasks:
                             task.cancel()
                     raise
                 finally:
-                    logger.debug("流连接已关闭")
+                    logger.debug("Stream connection closed")
 
             return StreamingResponse(
                 format_stream(),
@@ -142,7 +142,7 @@ async def create_completion(request: Request, body: CompletionRequest):
             
             async def convert_stream():
                 async for chunk in chunk_generator:
-                    # 转换格式后需要序列化为JSON字符串
+                    # Convert format and serialize to JSON string
                     completion_chunk = {
                         "id": chunk.get("id", f"cmpl-{uuid.uuid4()}"),
                         "object": "text_completion.chunk",
@@ -155,10 +155,8 @@ async def create_completion(request: Request, body: CompletionRequest):
                             "finish_reason": chunk["choices"][0].get("finish_reason")
                         }]
                     }
-                    # 添加SSE格式包装
                     yield f"data: {json.dumps(completion_chunk)}\n\n"
                 
-                # 添加流结束标记
                 yield "data: [DONE]\n\n"
             
             return StreamingResponse(

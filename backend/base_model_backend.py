@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List, Union
-from .chat_schemas import ChatCompletionRequest  # Note: You'll need to move the request models to a schemas.py file
+from .chat_schemas import ChatCompletionRequest
 
 class BaseModelBackend:
     def __init__(self, model_config):

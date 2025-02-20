@@ -107,7 +107,7 @@ class LlmClientBackend(BaseModelBackend):
             loop = asyncio.get_event_loop()
             for i, image_data in enumerate(base64_images):
                 message = client.send_jpeg(image_data, object_type="vlm.jpeg.base64")
-                print(f"发送第 {i+1} 张JPEG数据: {message[:20]}...")
+                print(f"Sending JPEG data #{i+1}: {message[:20]}...")
             
             sync_gen = client.inference_stream(
                 query,
@@ -170,10 +170,10 @@ class LlmClientBackend(BaseModelBackend):
                     if response.status == 200:
                         image_data = await response.read()
                         return base64.b64encode(image_data).decode('utf-8')
-                    self.logger.error(f"图片下载失败，状态码：{response.status}")
+                    self.logger.error(f"Image download failed, status code: {response.status}")
                     return None
         except Exception as e:
-            self.logger.error(f"图片下载异常：{str(e)}")
+            self.logger.error(f"Image download error: {str(e)}")
             return None
 
     async def generate(self, request: ChatCompletionRequest):

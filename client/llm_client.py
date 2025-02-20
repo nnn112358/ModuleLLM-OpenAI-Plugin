@@ -32,7 +32,7 @@ class LLMClient:
         try:
             self.sock.connect((self.host, self.port))
         except ConnectionRefusedError as e:
-            raise RuntimeError(f"无法连接到 {self.host}:{self.port}") from e
+            raise RuntimeError(f"Failed to connect to {self.host}:{self.port}") from e
 
     def close(self):
         if self.sock:
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         })
         print("Setup response:", setup_response)
 
-        for chunk in client.inference_stream("给我讲一个故事"):
+        for chunk in client.inference_stream("Tell me a story"):
             print("Received chunk:", chunk)
             client.stop_inference()
 
