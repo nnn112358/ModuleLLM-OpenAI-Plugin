@@ -74,3 +74,22 @@ models:
     model: qwen-vl-plus
     max_image_size: 4194304
     image_timeout: 20
+
+  melotts:
+    type: tts
+    host: "192.168.20.183"
+    port: 10001
+    model_name: "melotts_zh-cn"
+    object: "melotts.setup"
+    response_format: "wav.base64"
+    input: "tts.utf-8"
+
+  whisper:
+    type: asr
+    host: "192.168.20.183"
+    port: 10001
+    model_name: "whisper-tiny"
+    object: "whisper.setup"
+    response_format: "asr.utf-8"
+    input: "whisper-tiny"
+    language: "en"

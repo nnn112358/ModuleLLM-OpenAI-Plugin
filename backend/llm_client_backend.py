@@ -52,7 +52,7 @@ class LlmClientBackend(BaseModelBackend):
 
             if self._client_pool:
                 client = self._client_pool.pop()
-                self.logger.debug(f"♻️ Reusing client from pool | ID:{id(client)}")
+                self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
                 return client
 
             if len(self._active_clients) >= self.POOL_SIZE:

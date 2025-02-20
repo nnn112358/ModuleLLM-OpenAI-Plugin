@@ -1,7 +1,7 @@
 import os
 import uuid
 import yaml
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, File, Form, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import logging
 from slowapi import Limiter
@@ -9,11 +9,18 @@ from slowapi.util import get_remote_address
 import time
 import json
 import asyncio
-from backend.test_backend import TestBackend
-from backend.openai_proxy_backend import OpenAIProxyBackend 
-from backend.llm_client_backend import LlmClientBackend
-from backend.vision_model_backend import VisionModelBackend
-from backend.chat_schemas import ChatCompletionRequest, CompletionRequest, Message, ContentItem
+
+from backend import (
+    TestBackend,
+    OpenAIProxyBackend,
+    LlmClientBackend,
+    VisionModelBackend,
+    ASRClientBackend,
+    TtsClientBackend,
+    ChatCompletionRequest,
+    CompletionRequest,
+    Message,
+)
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -60,6 +67,10 @@ class ModelDispatcher:
                 self.backends[model_name] = TestBackend(model_config)
             elif model_config["type"] == "vision_model":
                 self.backends[model_name] = VisionModelBackend(model_config)
+            elif model_config["type"] == "tts":
+                self.backends[model_name] = TtsClientBackend(model_config)
+            elif model_config["type"] == "asr":
+                self.backends[model_name] = ASRClientBackend(model_config)
 
     def get_backend(self, model_name):
         return self.backends.get(model_name)
@@ -185,6 +196,92 @@ async def create_completion(request: Request, body: CompletionRequest):
             
     except Exception as e:
         logger.error(f"Completion error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/audio/speech")
+async def create_speech(request: Request):
+    try:
+        request_data = await request.json()
+        backend = _dispatcher.get_backend(request_data.get("model"))
+        if not backend:
+            raise HTTPException(status_code=400, detail="Unsupported model")
+
+        input_text = request_data.get("input")
+        voice = request_data.get("voice", "alloy")
+        response_format = request_data.get("response_format", "mp3")
+
+        audio_data = await backend.generate_speech(
+            input_text, 
+            voice=voice,
+            format=response_format
+        )
+
+        return StreamingResponse(
+            iter([audio_data]),
+            media_type=f"audio/{response_format}",
+            headers={"Content-Disposition": f'attachment; filename="speech.{response_format}"'}
+        )
+    except Exception as e:
+        logger.error(f"Speech generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/audio/transcriptions")
+async def create_transcription(
+    file: UploadFile = File(...),
+    model: str = Form(...),
+    language: str = Form(None),
+    prompt: str = Form(""),
+    response_format: str = Form("json")
+):
+    try:
+        backend = _dispatcher.get_backend(model)
+        if not backend:
+            raise HTTPException(status_code=400, detail="Unsupported model")
+
+        audio_data = await file.read()
+        
+        transcription = await backend.create_transcription(
+            audio_data,
+            language=language,
+            prompt=prompt
+        )
+
+        return JSONResponse(content={
+            "text": transcription,
+            "task": "transcribe",
+            "language": language,
+            "duration": 0
+        })
+    except Exception as e:
+        logger.error(f"Transcription error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/audio/translations")
+async def create_translation(
+    file: UploadFile = File(...),
+    model: str = Form(...), 
+    prompt: str = Form(""),
+    response_format: str = Form("json")
+):
+    try:
+        backend = _dispatcher.get_backend(model)
+        if not backend:
+            raise HTTPException(status_code=400, detail="Unsupported model")
+
+        audio_data = await file.read()
+        
+        translation = await backend.create_translation(
+            audio_data,
+            prompt=prompt
+        )
+
+        return JSONResponse(content={
+            "text": translation,
+            "task": "translate",
+            "duration": 0
+        })
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
