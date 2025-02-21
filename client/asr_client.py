@@ -8,10 +8,10 @@ import logging
 import threading
 import base64
 
-logger = logging.getLogger("tts_client")
+logger = logging.getLogger("llm_client")
 logger.setLevel(logging.DEBUG)
 
-class TTSClient:
+class LLMClient:
     def __init__(self, host: str = "localhost", port: int = 10001):
         self._lock = threading.Lock()
         self.host = host
@@ -56,6 +56,7 @@ class TTSClient:
             f"Action:{action} WorkID:{payload['work_id']}\n"
             f"Data: {str(data)[:100]}..."
         )
+        
         self.sock.sendall(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
         return request_id
 
@@ -65,30 +66,16 @@ class TTSClient:
         request_id = self._send_request("setup", object, model_config)
         return self._wait_response(request_id)
 
-    def inference_stream(self, query: str, object_type: str = "llm.utf-8") -> Generator[str, None, None]:
+    def inference_stream(self, query: str, object_type: str = "asr.base64") -> Generator[str, None, None]:
         request_id = self._send_request("inference", object_type, query)
-        buffer = b''
         
         while True:
-            start_time = time.time()
-            while time.time() - start_time < 10:
-                chunk = self.sock.recv(4096)
-                if not chunk:
-                    break
-                buffer += chunk
+            response = json.loads(self.sock.recv(4096).decode())
+            if response["request_id"] != request_id:
+                continue
                 
-                while b'\n' in buffer:
-                    line, buffer = buffer.split(b'\n', 1)
-                    try:
-                        response = json.loads(line.decode('utf-8'))
-                        if response["request_id"] == request_id:
-                            yield response["data"]["delta"]
-                            if response["data"].get("finish", False):
-                                self.work_id = response["work_id"]
-                                return
-                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                        logger.error(f"Failed to decode response: {e}")
-                        continue
+            yield response["data"]
+            break
 
     def stop_inference(self) -> dict:
         request_id = self._send_request("pause", "llm.utf-8", {})
@@ -97,9 +84,9 @@ class TTSClient:
     def send_jpeg(self, query: str, object_type: str = "vlm.jpeg.base64") -> str:
         request_id = self._send_request("inference", object_type, query)
         return request_id
-    
+
     def exit(self) -> dict:
-        request_id = self._send_request("exit", "None", "None")
+        request_id = self._send_request("exit", "llm.utf-8", {})
         result = self._wait_response(request_id)
         self._initialized = False
         return result
@@ -120,21 +107,36 @@ class TTSClient:
             if not self.sock:
                 self._connect()
 
+    def create_transcription(self, audio_data: bytes, language: str = "zh") -> str:
+        audio_b64 = base64.b64encode(audio_data).decode('utf-8')
+        
+        self.setup("whisper.setup", {
+            "model": "whisper-tiny",
+            "response_format": "asr.utf-8",
+            "input": "whisper.base64",
+            "language": language,
+            "enoutput": True,
+        })
+        
+        full_text = ""
+        for chunk in self.inference_stream(audio_b64, object_type="asr.base64"):
+            full_text += chunk
+            
+        return full_text
+
 if __name__ == "__main__":
-    with TTSClient(host='192.168.20.183') as client:
-        setup_response = client.setup("melotts.setup", {
-            "model": "melotts_zh-cn",
-            "response_format": "pcm.stream.base64",
-            "input": "tts.utf-8",
+    with LLMClient(host='192.168.20.183') as client:
+        setup_response = client.setup("whisper.setup", {
+            "model": "whisper-tiny",
+            "response_format": "asr.utf-8",
+            "input": "whisper.base64",
+            "language": "zh",
             "enoutput": True,
         })
         print("Setup response:", setup_response)
-        time.sleep(1)
-        for chunk in client.inference_stream("你叫什么名字？", object_type="tts.utf-8"):
-            print("Received data chunk:", chunk)
-            with open('output_base64.txt', 'a') as f_base:  
-                f_base.write(chunk + '\n')
-            with open('output.pcm', 'ab') as f_pcm:  
-                f_pcm.write(base64.b64decode(chunk))
+
+        for chunk in client.inference_stream("AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwQACAAEAA8AGQAWABUAHQAnADQANwAzADEAJAAlAA=="):
+            print("Received chunk:", chunk)
+
         exit_response = client.exit()
         print("Exit response:", exit_response)

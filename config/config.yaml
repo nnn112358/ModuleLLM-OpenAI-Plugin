@@ -84,7 +84,7 @@ models:
     response_format: "wav.base64"
     input: "tts.utf-8"
 
-  whisper:
+  whisper-1:
     type: asr
     host: "192.168.20.183"
     port: 10001
