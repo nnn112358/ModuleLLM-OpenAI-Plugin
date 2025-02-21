@@ -206,20 +206,16 @@ async def create_speech(request: Request):
         if not backend:
             raise HTTPException(status_code=400, detail="Unsupported model")
 
-        input_text = request_data.get("input")
-        voice = request_data.get("voice", "alloy")
-        response_format = request_data.get("response_format", "mp3")
-
-        audio_data = await backend.generate_speech(
-            input_text, 
-            voice=voice,
-            format=response_format
+        audio_stream = backend.generate_speech(
+            input_text=request_data.get("input"),
+            voice=request_data.get("voice", "alloy"),
+            format=request_data.get("response_format", "mp3")
         )
 
         return StreamingResponse(
-            iter([audio_data]),
-            media_type=f"audio/{response_format}",
-            headers={"Content-Disposition": f'attachment; filename="speech.{response_format}"'}
+            audio_stream,
+            media_type=f"audio/{request_data.get('response_format', 'mp3')}",
+            headers={"Content-Disposition": f'attachment; filename="speech.{request_data.get("response_format", "mp3")}"'}
         )
     except Exception as e:
         logger.error(f"Speech generation error: {str(e)}")

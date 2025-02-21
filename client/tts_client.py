@@ -55,7 +55,6 @@ class TTSClient:
             f"Action:{action} WorkID:{payload['work_id']}\n"
             f"Data: {str(data)[:100]}..."
         )
-        print(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
         self.sock.sendall(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
         return request_id
 
@@ -66,9 +65,7 @@ class TTSClient:
         return self._wait_response(request_id)
 
     def inference_stream(self, query: str, object_type: str = "llm.utf-8") -> Generator[str, None, None]:
-        print("inference_stream")
         request_id = self._send_request("inference", object_type, query)
-        print(request_id)
         buffer = b''
         
         while True:
@@ -123,23 +120,17 @@ class TTSClient:
                 self._connect()
 
 if __name__ == "__main__":
-    a = 0
-    while True:
-        with TTSClient(host='192.168.20.183') as client:
-            setup_response = client.setup("melotts.setup", {
-                "model": "melotts_zh-cn",
-                "response_format": "pcm.stream.base64",
-                "input": "tts.utf-8",
-                "enoutput": True,
-            })
-            print("Setup response:", setup_response)
-            time.sleep(1)
-            for chunk in client.inference_stream("你叫什么名字？", object_type="tts.utf-8"):
-                print("Received data chunk:", chunk)
-                pass
-            print("exit")
-            exit_response = client.exit()
-            print("Exit response:", exit_response)
+    with TTSClient(host='192.168.20.183') as client:
+        setup_response = client.setup("melotts.setup", {
+            "model": "melotts_zh-cn",
+            "response_format": "pcm.stream.base64",
+            "input": "tts.utf-8",
+            "enoutput": True,
+        })
+        print("Setup response:", setup_response)
         time.sleep(1)
-        a = a + 1
-        print(f"Now a={a}")
+        for chunk in client.inference_stream("你叫什么名字？", object_type="tts.utf-8"):
+            print("Received data chunk:", chunk)
+            pass
+        exit_response = client.exit()
+        print("Exit response:", exit_response)
