@@ -2,13 +2,12 @@ import json
 import socket
 import time
 import uuid
-from contextlib import contextmanager
 from typing import Generator
 import logging
 import threading
 import base64
 
-logger = logging.getLogger("llm_client")
+logger = logging.getLogger("asr_client")
 logger.setLevel(logging.DEBUG)
 
 class LLMClient:
