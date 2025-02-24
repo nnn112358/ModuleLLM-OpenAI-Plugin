@@ -32,6 +32,7 @@ class TTSClient:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             self.sock.connect((self.host, self.port))
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
         except ConnectionRefusedError as e:
             raise RuntimeError(f"Failed to connect to {self.host}:{self.port}") from e
 
@@ -71,7 +72,7 @@ class TTSClient:
         
         while True:
             start_time = time.time()
-            while time.time() - start_time < 10:
+            while time.time() - start_time < 3600:
                 chunk = self.sock.recv(4096)
                 if not chunk:
                     break
@@ -92,10 +93,6 @@ class TTSClient:
 
     def stop_inference(self) -> dict:
         request_id = self._send_request("pause", "llm.utf-8", {})
-        return request_id
-
-    def send_jpeg(self, query: str, object_type: str = "vlm.jpeg.base64") -> str:
-        request_id = self._send_request("inference", object_type, query)
         return request_id
     
     def exit(self) -> dict:
@@ -130,7 +127,7 @@ if __name__ == "__main__":
         })
         print("Setup response:", setup_response)
         time.sleep(1)
-        for chunk in client.inference_stream("你叫什么名字？", object_type="tts.utf-8"):
+        for chunk in client.inference_stream("好的，我来给你讲一个故事。", object_type="tts.utf-8"):
             print("Received data chunk:", chunk)
             with open('output_base64.txt', 'a') as f_base:  
                 f_base.write(chunk + '\n')

@@ -90,19 +90,25 @@ class TtsClientBackend(BaseModelBackend):
             loop = asyncio.get_event_loop()
             sync_gen = client.inference_stream(input_text, object_type="tts.utf-8")
 
-            while True:
-                chunk = await loop.run_in_executor(self._executor, next, sync_gen)
-                pcm_data = base64.b64decode(chunk)
+            def safe_next():
+                try:
+                    return next(sync_gen)
+                except StopIteration:
+                    return None
 
+            while True:
+                chunk = await loop.run_in_executor(self._executor, safe_next)
+                if chunk is None:
+                    break
+
+                pcm_data = base64.b64decode(chunk)
                 encoded_data = await loop.run_in_executor(
                     self._executor,
                     self._encode_audio,
                     pcm_data,
                     format
                 )
-
                 yield encoded_data
-                break
 
         finally:
             await self._release_client(client) 
