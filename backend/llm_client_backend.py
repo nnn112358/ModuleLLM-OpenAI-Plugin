@@ -21,7 +21,7 @@ class LlmClientBackend(BaseModelBackend):
         self._client_pool = []
         self._active_clients = {}
         self._pool_lock = asyncio.Lock()
-        self.logger = logging.getLogger("api.client")
+        self.logger = logging.getLogger("api.llm")
         self._inference_executor = ThreadPoolExecutor(max_workers=self.POOL_SIZE)
         self._active_tasks = weakref.WeakSet()
 

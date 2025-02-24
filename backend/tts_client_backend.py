@@ -36,6 +36,22 @@ class TtsClientBackend(BaseModelBackend):
                 host=self.config["host"],
                 port=self.config["port"]
             )
+            
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                self._executor,
+                lambda: client.setup(
+                    "melotts.setup",
+                    {
+                        "model": self.config["model_name"],
+                        "response_format": "pcm.stream.base64",
+                        "input": "tts.utf-8",
+                        "enoutput": True,
+                        "voice": "alloy"
+                    }
+                )
+            )
+            
             self._active_clients[id(client)] = client
             return client
 
@@ -72,25 +88,9 @@ class TtsClientBackend(BaseModelBackend):
         client = await self._get_client()
         try:
             loop = asyncio.get_event_loop()
-            
-            await loop.run_in_executor(
-                self._executor,
-                lambda: client.setup(
-                    "melotts.setup",
-                    {
-                        "model": self.config["model_name"],
-                        "response_format": "pcm.stream.base64",
-                        "input": "tts.utf-8",
-                        "enoutput": True,
-                        "voice": voice
-                    }
-                )
-            )
-
             sync_gen = client.inference_stream(input_text, object_type="tts.utf-8")
 
             while True:
-                # try:
                 chunk = await loop.run_in_executor(self._executor, next, sync_gen)
                 pcm_data = base64.b64decode(chunk)
 
@@ -102,7 +102,6 @@ class TtsClientBackend(BaseModelBackend):
                 )
 
                 yield encoded_data
-                # except StopIteration:
                 break
 
         finally:
