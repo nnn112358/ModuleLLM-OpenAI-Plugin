@@ -1,6 +1,3 @@
-import uuid
-import time
-from openai import AsyncOpenAI
 from .base_model_backend import BaseModelBackend
 from .chat_schemas import ChatCompletionRequest
 from fastapi import HTTPException

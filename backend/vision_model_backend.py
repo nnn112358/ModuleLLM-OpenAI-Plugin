@@ -1,14 +1,13 @@
 import uuid
 import time
-from openai import AsyncOpenAI
 from .base_model_backend import BaseModelBackend
 from .chat_schemas import ChatCompletionRequest, Message, ContentItem
 from fastapi import HTTPException
 from typing import List
 
 class VisionModelBackend(BaseModelBackend):
-    MAX_IMAGE_SIZE = 4 * 1024 * 1024  # 4MB
-    IMAGE_TIMEOUT = 15  # 秒
+    MAX_IMAGE_SIZE = 4 * 1024 * 1024
+    IMAGE_TIMEOUT = 15
     
     async def _process_image_content(self, content_item: ContentItem) -> dict:
         if not content_item.image_url:

@@ -4,7 +4,6 @@ import asyncio
 import base64
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncGenerator
 
 logger = logging.getLogger("api.asr")
 

@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 from .base_model_backend import BaseModelBackend
-from .chat_schemas import ChatCompletionRequest
 from client.tts_client import TTSClient
 import asyncio
 import base64
@@ -59,30 +58,42 @@ class TtsClientBackend(BaseModelBackend):
         async with self._pool_lock:
             self._client_pool.append(client)
 
-    def _encode_audio(self, pcm_data: bytes, format: str) -> bytes:
-        raw_audio = np.frombuffer(pcm_data, dtype=np.int16)
-        audio_segment = AudioSegment(
-            raw_audio.tobytes(),
-            frame_rate=self.sample_rate,
-            sample_width=2,
-            channels=self.channels
-        )
-
-        format_map = {
-            "mp3": "mp3",
-            "opus": "ogg",
-            "aac": "adts",
-            "flac": "flac",
-            "wav": "wav",
-            "pcm": "raw"
-        }
-
+    def _encode_stream_chunk(self, pcm_data: bytes, format: str) -> bytes:
         if format == "pcm":
             return pcm_data
-
+            
+        audio = AudioSegment(
+            data=pcm_data,
+            sample_width=2,
+            frame_rate=self.sample_rate,
+            channels=self.channels
+        )
         buffer = io.BytesIO()
-        audio_segment.export(buffer, format=format_map[format])
+        audio.export(buffer, format=format)
         return buffer.getvalue()
+
+    def _encode_full_audio(self, pcm_data: bytes, format: str) -> bytes:
+        audio = AudioSegment(
+            data=pcm_data,
+            sample_width=2,
+            frame_rate=self.sample_rate,
+            channels=self.channels
+        )
+        
+        buffer = io.BytesIO()
+        audio.export(buffer, format=format)
+        return buffer.getvalue()
+
+    def _encode_audio(self, pcm_data: bytes, format: str) -> bytes:
+        if format in ["mp3", "opus", "aac", "pcm"]:
+            return self._encode_stream_chunk(pcm_data, format)
+        
+        if not hasattr(self, '_full_audio_buffer'):
+            self._full_audio_buffer = io.BytesIO()
+        
+        self._full_audio_buffer.write(pcm_data)
+        
+        return b''
 
     async def generate_speech(self, input_text: str, voice: str = "alloy", format: str = "mp3") -> AsyncGenerator[bytes, None]:
         client = await self._get_client()
@@ -96,6 +107,7 @@ class TtsClientBackend(BaseModelBackend):
                 except StopIteration:
                     return None
 
+            full_data = b''
             while True:
                 chunk = await loop.run_in_executor(self._executor, safe_next)
                 if chunk is None:
@@ -108,7 +120,14 @@ class TtsClientBackend(BaseModelBackend):
                     pcm_data,
                     format
                 )
-                yield encoded_data
+                if encoded_data:
+                    yield encoded_data
+                else:
+                    full_data += pcm_data
+
+            if format not in ["mp3", "opus", "aac", "pcm"]:
+                final_audio = self._encode_full_audio(full_data, format)
+                yield final_audio
 
         finally:
             await self._release_client(client) 

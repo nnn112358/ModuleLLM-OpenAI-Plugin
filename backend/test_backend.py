@@ -7,7 +7,7 @@ class TestBackend(BaseModelBackend):
     async def generate(self, request: ChatCompletionRequest):
         if request.stream:
             async def chunk_generator():
-                content_parts = ["🤣", "👉🏻", "🤡"]
+                content_parts = ["hello", "Module", "LLM"]
                 messages=[m.model_dump() for m in request.messages]
                 print(f"messages:_____________{messages}______________")
                 for i, part in enumerate(content_parts):
@@ -41,7 +41,7 @@ class TestBackend(BaseModelBackend):
                 "choices": [{
                     "message": {
                         "role": "assistant",
-                        "content": "🤣👉🏻🤡",
+                        "content": "Hello Module LLM",
                         "function_call": None,
                         "tool_calls": None
                     },
