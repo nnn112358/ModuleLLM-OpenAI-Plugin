@@ -1,5 +1,5 @@
 from .base_model_backend import BaseModelBackend
-from client.asr_client import LLMClient
+from client.asr_client import ASRClient
 import asyncio
 import base64
 import logging
@@ -45,7 +45,7 @@ class ASRClientBackend(BaseModelBackend):
             if len(self.clients) >= self.POOL_SIZE:
                 raise RuntimeError("ASR connection pool exhausted")
                 
-            client = LLMClient(
+            client = ASRClient(
                 host=self.config["host"],
                 port=self.config["port"]
             )

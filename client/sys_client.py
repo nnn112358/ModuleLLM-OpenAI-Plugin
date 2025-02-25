@@ -7,10 +7,10 @@ import logging
 import threading
 import base64
 
-logger = logging.getLogger("asr_client")
+logger = logging.getLogger("sys_client")
 logger.setLevel(logging.DEBUG)
 
-class ASRClient:
+class SYSClient:
     def __init__(self, host: str = "localhost", port: int = 10001):
         self._lock = threading.Lock()
         self.host = host
@@ -41,7 +41,7 @@ class ASRClient:
 
     def _send_request(self, action: str, object: str, data: dict) -> str:
         request_id = str(uuid.uuid4())
-        object_type = object.split('.')[0] if '.' in object else "llm"
+        object_type = "sys"
         payload = {
             "request_id": request_id,
             "work_id": self.work_id or object_type,
@@ -86,6 +86,14 @@ class ASRClient:
         self._initialized = False
         return result
 
+    def cmminfo(self) -> dict:
+        request_id = self._send_request("cmminfo", "", {})
+        return self._wait_response(request_id)
+
+    def hwinfo(self) -> dict:
+        request_id = self._send_request("hwinfo", "", {})
+        return self._wait_response(request_id)
+    
     def _wait_response(self, request_id: str) -> dict:
         start_time = time.time()
         while time.time() - start_time < 10:
@@ -120,18 +128,8 @@ class ASRClient:
         return full_text
 
 if __name__ == "__main__":
-    with ASRClient(host='192.168.20.183') as client:
-        setup_response = client.setup("whisper.setup", {
-            "model": "whisper-tiny",
-            "response_format": "asr.utf-8",
-            "input": "whisper.base64",
-            "language": "zh",
-            "enoutput": True,
-        })
-        print("Setup response:", setup_response)
-
-        for chunk in client.inference_stream("AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwQACAAEAA8AGQAWABUAHQAnADQANwAzADEAJAAlAA=="):
-            print("Received chunk:", chunk)
-
-        exit_response = client.exit()
-        print("Exit response:", exit_response)
+    with SYSClient(host='192.168.20.63') as client:
+        hw_response = client.hwinfo()
+        print("hwinfo response:", hw_response)
+        cmm_response = client.cmminfo()
+        print("cmm response:", cmm_response)
