@@ -54,19 +54,27 @@ class LlmClientBackend(BaseModelBackend):
         try:
             await asyncio.wait_for(self._pool_lock.acquire(), timeout=30.0)
             
-            if self._client_pool:
-                client = self._client_pool.pop()
-                self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
-                return client
+            start_time = time.time()
+            timeout = 30.0
+            retry_interval = 3
 
+            while True:
+                if self._client_pool:
+                    client = self._client_pool.pop()
+                    self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
+                    return client
+
+                if len(self._active_clients) < self.POOL_SIZE:
+                    break
+
+                self._pool_lock.release()
+                await asyncio.sleep(retry_interval)
+                await asyncio.wait_for(self._pool_lock.acquire(), timeout=timeout - (time.time() - start_time))
+                
             if "memory_required" in self.config:
                 await self.memory_checker.check_memory(
                     self.config["memory_required"]
                 )
-
-
-            if len(self._active_clients) >= self.POOL_SIZE:
-                raise RuntimeError("Connection pool exhausted")
 
             self.logger.debug("Creating new LLM client")
             client = LLMClient(
@@ -99,6 +107,8 @@ class LlmClientBackend(BaseModelBackend):
                 )
             )
             return client
+        except asyncio.TimeoutError:
+            raise RuntimeError("Server busy, please try again later.")
         finally:
             self._pool_lock.release()
 
