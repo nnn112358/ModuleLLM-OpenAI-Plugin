@@ -26,6 +26,7 @@ models:
     model_name: "qwen2.5-0.5B-prefill-20e"
     object: "llm.setup"
     pool_size: 2
+    max_context_length: 128
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
     memory_required: 716800
@@ -39,22 +40,24 @@ models:
     model_name: "Qwen2.5-0.5B-w8a16"
     object: "llm.setup"
     pool_size: 2
+    max_context_length: 1024
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
     memory_required: 716800
     system_prompt: |
       You are a helpful assistant.
 
-  deepseek-r1-1.5B-ax630c:
+  deepseek-r1-distill-qwen-1.5b:
     type: tcp_client
     host: "192.168.20.65"
     port: 10001
     model_name: "deepseek-r1-1.5B-ax630c"
     object: "llm.setup"
     pool_size: 1
+    max_context_length: 1024
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
-    memory_required: 1572864
+    memory_required: 2097152
     system_prompt: |
       You are a helpful assistant.
 
@@ -64,7 +67,8 @@ models:
     port: 10001
     model_name: "internvl2.5-1B-ax630c"
     object: "vlm.setup"
-    pool_size: 1
+    pool_size: 2
+    max_context_length: 256
     response_format: "vlm.utf-8.stream"
     input: "vlm.utf-8"
     memory_required: 1048576

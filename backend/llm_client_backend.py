@@ -14,15 +14,14 @@ from typing import Union, List
 from services.memory_check import MemoryChecker
 
 class LlmClientBackend(BaseModelBackend):
-    MAX_CONTEXT_LENGTH = 500
-    POOL_SIZE = 2
-
     def __init__(self, model_config):
         super().__init__(model_config)
         self._client_pool = []
         self._active_clients = {}
         self._pool_lock = asyncio.Lock()
         self.logger = logging.getLogger("api.llm")
+        self.MAX_CONTEXT_LENGTH = model_config.get("max_context_length", 500)
+        self.POOL_SIZE = model_config.get("pool_size", 2)
         self._inference_executor = ThreadPoolExecutor(max_workers=self.POOL_SIZE)
         self._active_tasks = weakref.WeakSet()
         self.memory_checker = MemoryChecker(
@@ -55,15 +54,16 @@ class LlmClientBackend(BaseModelBackend):
         try:
             await asyncio.wait_for(self._pool_lock.acquire(), timeout=30.0)
             
+            if self._client_pool:
+                client = self._client_pool.pop()
+                self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
+                return client
+
             if "memory_required" in self.config:
                 await self.memory_checker.check_memory(
                     self.config["memory_required"]
                 )
 
-            if self._client_pool:
-                client = self._client_pool.pop()
-                self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
-                return client
 
             if len(self._active_clients) >= self.POOL_SIZE:
                 raise RuntimeError("Connection pool exhausted")
