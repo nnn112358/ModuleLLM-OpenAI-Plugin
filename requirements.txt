@@ -1,0 +1,8 @@
+PyYAML
+fastapi
+slowapi
+aiohttp
+pydub
+numpy
+python-multipart
+uvicorn

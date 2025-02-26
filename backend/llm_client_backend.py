@@ -11,6 +11,7 @@ import base64
 import logging
 from fastapi import HTTPException
 from typing import Union, List
+from services.memory_check import MemoryChecker
 
 class LlmClientBackend(BaseModelBackend):
     MAX_CONTEXT_LENGTH = 500
@@ -24,6 +25,10 @@ class LlmClientBackend(BaseModelBackend):
         self.logger = logging.getLogger("api.llm")
         self._inference_executor = ThreadPoolExecutor(max_workers=self.POOL_SIZE)
         self._active_tasks = weakref.WeakSet()
+        self.memory_checker = MemoryChecker(
+            host=self.config["host"],
+            port=self.config["port"]
+        )
 
     async def _parse_content(self, content: Union[str, List[ContentItem]], base64_images: list) -> str:
         text_parts = []
@@ -49,6 +54,11 @@ class LlmClientBackend(BaseModelBackend):
     async def _get_client(self, request):
         try:
             await asyncio.wait_for(self._pool_lock.acquire(), timeout=30.0)
+            
+            if "memory_required" in self.config:
+                await self.memory_checker.check_memory(
+                    self.config["memory_required"]
+                )
 
             if self._client_pool:
                 client = self._client_pool.pop()

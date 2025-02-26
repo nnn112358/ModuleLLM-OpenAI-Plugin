@@ -21,49 +21,53 @@ models:
 
   qwen2.5-0.5b:
     type: tcp_client
-    host: "192.168.20.183" 
+    host: "192.168.20.65" 
     port: 10001
     model_name: "qwen2.5-0.5B-prefill-20e"
     object: "llm.setup"
     pool_size: 2
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
+    memory_required: 716800
     system_prompt: |
       You are a helpful assistant. 
 
   Qwen2.5-0.5B-w8a16:
     type: tcp_client
-    host: "192.168.20.183"
+    host: "192.168.20.65"
     port: 10001
     model_name: "Qwen2.5-0.5B-w8a16"
     object: "llm.setup"
     pool_size: 2
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
+    memory_required: 716800
     system_prompt: |
       You are a helpful assistant.
 
   deepseek-r1-1.5B-ax630c:
     type: tcp_client
-    host: "192.168.20.183"
+    host: "192.168.20.65"
     port: 10001
     model_name: "deepseek-r1-1.5B-ax630c"
     object: "llm.setup"
     pool_size: 1
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
+    memory_required: 1572864
     system_prompt: |
       You are a helpful assistant.
 
   internvl2.5-1B-ax630c:
     type: tcp_client
-    host: "192.168.20.183"
+    host: "192.168.20.65"
     port: 10001
     model_name: "internvl2.5-1B-ax630c"
     object: "vlm.setup"
     pool_size: 1
     response_format: "vlm.utf-8.stream"
     input: "vlm.utf-8"
+    memory_required: 1048576
     system_prompt: |
       You are a helpful assistant.
 
@@ -77,19 +81,21 @@ models:
 
   melotts:
     type: tts
-    host: "192.168.20.183"
+    host: "192.168.20.65"
     port: 10001
     model_name: "melotts_zh-cn"
     object: "melotts.setup"
     response_format: "wav.base64"
+    memory_required: 51200
     input: "tts.utf-8"
 
   whisper-1:
     type: asr
-    host: "192.168.20.183"
+    host: "192.168.20.65"
     port: 10001
     model_name: "whisper-tiny"
     object: "whisper.setup"
     response_format: "asr.utf-8"
     input: "whisper-tiny"
+    memory_required: 20480
     language: "en"

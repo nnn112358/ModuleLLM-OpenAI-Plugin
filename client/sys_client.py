@@ -128,7 +128,7 @@ class SYSClient:
         return full_text
 
 if __name__ == "__main__":
-    with SYSClient(host='192.168.20.63') as client:
+    with SYSClient(host='192.168.20.65') as client:
         hw_response = client.hwinfo()
         print("hwinfo response:", hw_response)
         cmm_response = client.cmminfo()
