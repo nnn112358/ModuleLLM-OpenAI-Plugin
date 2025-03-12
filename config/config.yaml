@@ -19,51 +19,65 @@ models:
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     model: deepseek-r1
 
-  qwen2.5-0.5b:
+  qwen2.5-0.5B-p256-ax630c:
     type: tcp_client
-    host: "192.168.20.65" 
+    host: "192.168.20.56" 
     port: 10001
-    model_name: "qwen2.5-0.5B-prefill-20e"
+    model_name: "qwen2.5-0.5B-p256-ax630c"
     object: "llm.setup"
     pool_size: 2
     max_context_length: 128
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
-    memory_required: 716800
+    memory_required: 560460
     system_prompt: |
       You are a helpful assistant. 
 
-  Qwen2.5-0.5B-w8a16:
+  qwen2.5-1.5B-p256-ax630c:
     type: tcp_client
-    host: "192.168.20.65"
+    host: "192.168.20.56"
     port: 10001
-    model_name: "Qwen2.5-0.5B-w8a16"
+    model_name: "qwen2.5-1.5B-p256-ax630c"
     object: "llm.setup"
-    pool_size: 2
-    max_context_length: 1024
+    pool_size: 1
+    max_context_length: 128
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
-    memory_required: 716800
+    memory_required: 1686216
     system_prompt: |
       You are a helpful assistant.
 
-  deepseek-r1-distill-qwen-1.5b:
+  deepseek-r1-1.5B-p256-ax630c:
     type: tcp_client
-    host: "192.168.20.65"
+    host: "192.168.20.56"
     port: 10001
-    model_name: "deepseek-r1-1.5B-ax630c"
+    model_name: "deepseek-r1-1.5B-p256-ax630c"
     object: "llm.setup"
     pool_size: 1
-    max_context_length: 1024
+    max_context_length: 128
     response_format: "llm.utf-8.stream"
     input: "llm.utf-8"
-    memory_required: 2097152
+    memory_required: 1686552
+    system_prompt: |
+      You are a helpful assistant.
+
+  llama3.2-1B-p256-ax630c:
+    type: tcp_client
+    host: "192.168.20.56"
+    port: 10001
+    model_name: "llama3.2-1B-p256-ax630c"
+    object: "llm.setup"
+    pool_size: 2
+    max_context_length: 128
+    response_format: "llm.utf-8.stream"
+    input: "llm.utf-8"
+    memory_required: 1336288
     system_prompt: |
       You are a helpful assistant.
 
   internvl2.5-1B-ax630c:
     type: tcp_client
-    host: "192.168.20.65"
+    host: "192.168.20.56"
     port: 10001
     model_name: "internvl2.5-1B-ax630c"
     object: "vlm.setup"
@@ -71,7 +85,7 @@ models:
     max_context_length: 256
     response_format: "vlm.utf-8.stream"
     input: "vlm.utf-8"
-    memory_required: 1048576
+    memory_required: 905356
     system_prompt: |
       You are a helpful assistant.
 
@@ -85,21 +99,21 @@ models:
 
   melotts:
     type: tts
-    host: "192.168.20.65"
+    host: "192.168.20.56"
     port: 10001
     model_name: "melotts_zh-cn"
     object: "melotts.setup"
     response_format: "wav.base64"
-    memory_required: 51200
+    memory_required: 59764
     input: "tts.utf-8"
 
-  whisper-1:
+  whisper-tiny:
     type: asr
-    host: "192.168.20.65"
+    host: "192.168.20.56"
     port: 10001
     model_name: "whisper-tiny"
     object: "whisper.setup"
     response_format: "asr.utf-8"
-    input: "whisper-tiny"
-    memory_required: 20480
+    memory_required: 289132
     language: "en"
+    input: "pcm.base64"
