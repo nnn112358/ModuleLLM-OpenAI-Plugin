@@ -94,16 +94,28 @@ class SYSClient:
         request_id = self._send_request("hwinfo", "", {})
         return self._wait_response(request_id)
     
+    def model_list(self) -> dict:
+        request_id = self._send_request("lsmode", "", {})
+        return self._wait_response(request_id)
+    
     def _wait_response(self, request_id: str) -> dict:
         start_time = time.time()
+        buffer = b""
         while time.time() - start_time < 10:
-            response = json.loads(self.sock.recv(4096).decode())
-            if response["request_id"] == request_id:
-                if response["error"]["code"] != 0:
-                    raise RuntimeError(f"Server error: {response['error']['message']}")
-                self.work_id = response["work_id"]
-                return response
-        raise TimeoutError("No response from server")
+            chunk = self.sock.recv(4096)
+            if not chunk:
+                break
+            buffer += chunk
+            try:
+                response = json.loads(buffer.decode('utf-8'))
+                if response["request_id"] == request_id:
+                    if response["error"]["code"] != 0:
+                        raise RuntimeError(f"Server error: {response['error']['message']}")
+                    self.work_id = response["work_id"]
+                    return response
+            except json.JSONDecodeError:
+                continue
+        raise TimeoutError("No valid response from server")
 
     def connect(self):
         with self._lock:
@@ -128,8 +140,10 @@ class SYSClient:
         return full_text
 
 if __name__ == "__main__":
-    with SYSClient(host='192.168.20.65') as client:
+    with SYSClient(host='192.168.20.48') as client:
         hw_response = client.hwinfo()
         print("hwinfo response:", hw_response)
         cmm_response = client.cmminfo()
         print("cmm response:", cmm_response)
+        model_list_response = client.model_list()
+        print("model_list_response:", model_list_response)

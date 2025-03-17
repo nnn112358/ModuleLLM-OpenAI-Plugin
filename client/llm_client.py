@@ -10,6 +10,10 @@ logger = logging.getLogger("llm_client")
 logger.setLevel(logging.DEBUG)
 
 class LLMClient:
+    def __repr__(self):
+        attrs = ", ".join(f"{k}={v}" for k, v in self.__dict__.items() if not k.startswith("_"))
+        return f"LLMClient({attrs})"
+
     def __init__(self, host: str = "localhost", port: int = 10001):
         self._lock = threading.Lock()
         self.host = host
