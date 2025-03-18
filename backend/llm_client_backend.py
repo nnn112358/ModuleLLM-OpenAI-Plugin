@@ -72,9 +72,7 @@ class LlmClientBackend(BaseModelBackend):
                 await asyncio.wait_for(self._pool_lock.acquire(), timeout=timeout - (time.time() - start_time))
                 
             if "memory_required" in self.config:
-                await self.memory_checker.check_memory(
-                    self.config["memory_required"]
-                )
+                await self.memory_checker.check_memory(self.config["memory_required"])
 
             self.logger.debug("Creating new LLM client")
             client = LLMClient(
@@ -116,6 +114,14 @@ class LlmClientBackend(BaseModelBackend):
         async with self._pool_lock:
             self._client_pool.append(client)
             self.logger.debug(f"Returned client to pool | ID:{id(client)}")
+
+    async def close(self):
+        async with self._pool_lock:
+            for client in self._client_pool:
+                client.exit()
+            self._client_pool.clear()
+            self._active_clients.clear()
+            self._inference_executor.shutdown(wait=True)
 
     async def inference_stream(self, query: str, base64_images: list, request: ChatCompletionRequest):
         client = await self._get_client(request)

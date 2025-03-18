@@ -57,25 +57,36 @@ async def auth_middleware(request: Request, call_next):
 class ModelDispatcher:
     def __init__(self):
         self.backends = {}
-        self.load_models()
+        self.llm_models = []
+        self.lock = asyncio.Lock()
 
-    def load_models(self):
-        for model_name, model_config in config.data["models"].items():
-            if model_config["type"] == "openai_proxy":
-                self.backends[model_name] = OpenAIProxyBackend(model_config)
-            elif model_config["type"] == "tcp_client":
-                self.backends[model_name] = LlmClientBackend(model_config)
-            elif model_config["type"] == "llama.cpp":
-                self.backends[model_name] = TestBackend(model_config)
-            elif model_config["type"] == "vision_model":
-                self.backends[model_name] = VisionModelBackend(model_config)
-            elif model_config["type"] == "tts":
-                self.backends[model_name] = TtsClientBackend(model_config)
-            elif model_config["type"] == "asr":
-                self.backends[model_name] = ASRClientBackend(model_config)
-
-    def get_backend(self, model_name):
-        return self.backends.get(model_name)
+    async def get_backend(self, model_name):
+        async with self.lock:
+            if model_name not in self.backends:
+                model_config = config.data["models"].get(model_name)
+                if model_config is None:
+                    return None
+                if model_config["type"] == "openai_proxy":
+                    self.backends[model_name] = OpenAIProxyBackend(model_config)
+                elif model_config["type"] in ("llm", "vlm"):
+                    while len(self.llm_models) >= 2:
+                        oldest_model = self.llm_models.pop(0)
+                        old_instance = self.backends.pop(oldest_model, None)
+                        if old_instance:
+                            await old_instance.close()
+                    self.backends[model_name] = LlmClientBackend(model_config)
+                    self.llm_models.append(model_name)
+                elif model_config["type"] == "llama.cpp":
+                    self.backends[model_name] = TestBackend(model_config)
+                elif model_config["type"] == "vision_model":
+                    self.backends[model_name] = VisionModelBackend(model_config)
+                elif model_config["type"] == "tts":
+                    self.backends[model_name] = TtsClientBackend(model_config)
+                elif model_config["type"] == "asr":
+                    self.backends[model_name] = ASRClientBackend(model_config)
+                else:
+                    return None
+            return self.backends.get(model_name)
 
 async def initialize():
     global config
@@ -92,7 +103,7 @@ _dispatcher = asyncio.run(initialize())
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request, body: ChatCompletionRequest):
-    backend = _dispatcher.get_backend(body.model)
+    backend = await _dispatcher.get_backend(body.model)
     if not backend:
         raise HTTPException(
             status_code=400, 
@@ -156,7 +167,7 @@ async def create_completion(request: Request, body: CompletionRequest):
         stream=body.stream
     )
     
-    backend = _dispatcher.get_backend(chat_request.model)
+    backend = await _dispatcher.get_backend(chat_request.model)
     if not backend:
         raise HTTPException(status_code=400, detail=f"Unsupported model: {chat_request.model}")
 
@@ -215,7 +226,7 @@ async def create_completion(request: Request, body: CompletionRequest):
 async def create_speech(request: Request):
     try:
         request_data = await request.json()
-        backend = _dispatcher.get_backend(request_data.get("model"))
+        backend = await _dispatcher.get_backend(request_data.get("model"))
         if not backend:
             raise HTTPException(status_code=400, detail="Unsupported model")
 
@@ -243,7 +254,7 @@ async def create_transcription(
     response_format: str = Form("json")
 ):
     try:
-        backend = _dispatcher.get_backend(model)
+        backend = await _dispatcher.get_backend(model)
         if not backend:
             raise HTTPException(status_code=400, detail="Unsupported model")
 
@@ -273,7 +284,7 @@ async def create_translation(
     response_format: str = Form("json")
 ):
     try:
-        backend = _dispatcher.get_backend(model)
+        backend = await _dispatcher.get_backend(model)
         if not backend:
             raise HTTPException(status_code=400, detail="Unsupported model")
 

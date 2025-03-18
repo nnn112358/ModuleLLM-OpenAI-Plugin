@@ -46,26 +46,38 @@ class GetModelList:
                             "object": f"{model_type}.setup",
                             "system_prompt": "You are a helpful assistant."
                         })
+                        if '-1.5B-' in mode:
+                            new_entry['memory_required'] = 1782579
+                            new_entry['pool_size'] = 1
+                        elif '-1B-' in mode:
+                            new_entry['memory_required'] = 1363148
+                            new_entry['pool_size'] = 2
+                        elif '-0.5B-' in mode:
+                            new_entry['memory_required'] = 560460
+                            new_entry['pool_size'] = 2
+
                     elif model_type == 'tts':
                         if 'melotts' in mode.lower():
                             obj = 'melotts.setup'
+                            new_entry['memory_required'] = 59764
                         else:
                             obj = 'tts.setup'
         
                         new_entry.update({
                             "response_format": "wav.base64",
-                            "object": "melotts.setup",
                             "object": obj
                         })
                     elif model_type == 'asr':
                         if 'whisper' in mode.lower():
                             obj = 'whisper.setup'
+                            if 'tiny' in mode:
+                                new_entry['memory_required'] = 289132
                         else:
                             obj = 'asr.setup'
                         new_entry.update({
                             "input": "pcm.base64",
                             "response_format": "asr.utf-8",
-                            "object": "whisper.setup"
+                            "object": obj
                         })
                     else:
                         continue
