@@ -20,7 +20,7 @@ class LlmClientBackend(BaseModelBackend):
         self._active_clients = {}
         self._pool_lock = asyncio.Lock()
         self.logger = logging.getLogger("api.llm")
-        self.MAX_CONTEXT_LENGTH = model_config.get("max_context_length", 500)
+        self.MAX_CONTEXT_LENGTH = model_config.get("max_context_length", 200)
         self.POOL_SIZE = model_config.get("pool_size", 2)
         self._inference_executor = ThreadPoolExecutor(max_workers=self.POOL_SIZE)
         self._active_tasks = weakref.WeakSet()

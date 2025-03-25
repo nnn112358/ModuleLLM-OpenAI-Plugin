@@ -69,7 +69,8 @@ class ModelDispatcher:
                 if model_config["type"] == "openai_proxy":
                     self.backends[model_name] = OpenAIProxyBackend(model_config)
                 elif model_config["type"] in ("llm", "vlm"):
-                    while len(self.llm_models) >= 2:
+                    count = model_config["pool_size"]
+                    while len(self.llm_models) >= count:
                         oldest_model = self.llm_models.pop(0)
                         old_instance = self.backends.pop(oldest_model, None)
                         if old_instance:
@@ -307,7 +308,7 @@ async def create_translation(
 @app.get("/v1/models")
 async def list_models():
     models_info = []
-    for model_name in _dispatcher.backends.keys():
+    for model_name in config.data["models"].keys():
         model_config = config.data["models"].get(model_name, {})
         models_info.append({
             "id": model_name,
