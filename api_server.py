@@ -38,7 +38,9 @@ limiter = Limiter(key_func=get_remote_address)
 
 class Config:
     def __init__(self):
-        with open("config/config.yaml") as f:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(current_dir, "config", "config.yaml")
+        with open(config_path) as f:
             self.data = yaml.safe_load(f)
 
 config = Config()

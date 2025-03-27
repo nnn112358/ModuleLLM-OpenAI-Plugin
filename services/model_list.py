@@ -1,3 +1,4 @@
+import os
 import logging
 import asyncio
 import yaml
@@ -15,8 +16,17 @@ class GetModelList:
         try:
             if not self._sys_client:
                 self._sys_client = SYSClient(host=self.host, port=self.port)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            parent_dir = os.path.dirname(current_dir)
+            config_path = os.path.join(parent_dir, "config", "config.yaml")
 
-            with open('config/config.yaml', 'r') as f:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            config['models'] = {}
+            with open(config_path, 'w') as f:
+                yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+
+            with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
             models_config = config.get('models', {})
             model_list = await self._get_model_list()
@@ -84,7 +94,7 @@ class GetModelList:
 
                     models_config[mode] = new_entry
                     config['models'] = models_config
-                    with open('config/config.yaml', 'w') as f:
+                    with open(config_path, 'w') as f:
                         yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
 
         except Exception as e:
