@@ -78,7 +78,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer YOUR_KEY" \
 -d '{
-  "model": "gpt-3.5-turbo",
+  "model": "qwen2.5-0.5B-p256-ax630c",
   "messages": [{"role": "user", "content": "Hello!"}],
   "temperature": 0.7
 }'
@@ -90,7 +90,7 @@ curl -X POST "http://localhost:8000/v1/audio/speech" \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer YOUR_KEY" \
 -d '{
-  "model": "tts-1",
+  "model": "melotts",
   "input": "Hello world!",
   "voice": "alloy"
 }'

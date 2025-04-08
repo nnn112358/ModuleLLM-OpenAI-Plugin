@@ -118,20 +118,3 @@ class ASRClient:
             full_text += chunk
             
         return full_text
-
-if __name__ == "__main__":
-    with ASRClient(host='192.168.20.183') as client:
-        setup_response = client.setup("whisper.setup", {
-            "model": "whisper-tiny",
-            "response_format": "asr.utf-8",
-            "input": "whisper.base64",
-            "language": "zh",
-            "enoutput": True,
-        })
-        print("Setup response:", setup_response)
-
-        for chunk in client.inference_stream("AAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwQACAAEAA8AGQAWABUAHQAnADQANwAzADEAJAAlAA=="):
-            print("Received chunk:", chunk)
-
-        exit_response = client.exit()
-        print("Exit response:", exit_response)

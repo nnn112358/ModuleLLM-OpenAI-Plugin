@@ -115,22 +115,3 @@ class TTSClient:
         with self._lock:
             if not self.sock:
                 self._connect()
-
-if __name__ == "__main__":
-    with TTSClient(host='192.168.20.183') as client:
-        setup_response = client.setup("melotts.setup", {
-            "model": "melotts_zh-cn",
-            "response_format": "pcm.stream.base64",
-            "input": "tts.utf-8",
-            "enoutput": True,
-        })
-        print("Setup response:", setup_response)
-        time.sleep(1)
-        for chunk in client.inference_stream("好的，我来给你讲一个故事。", object_type="tts.utf-8"):
-            print("Received data chunk:", chunk)
-            with open('output_base64.txt', 'a') as f_base:  
-                f_base.write(chunk + '\n')
-            with open('output.pcm', 'ab') as f_pcm:  
-                f_pcm.write(base64.b64decode(chunk))
-        exit_response = client.exit()
-        print("Exit response:", exit_response)

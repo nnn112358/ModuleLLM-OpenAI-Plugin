@@ -138,12 +138,3 @@ class SYSClient:
             full_text += chunk
             
         return full_text
-
-if __name__ == "__main__":
-    with SYSClient(host='192.168.20.48') as client:
-        hw_response = client.hwinfo()
-        print("hwinfo response:", hw_response)
-        cmm_response = client.cmminfo()
-        print("cmm response:", cmm_response)
-        model_list_response = client.model_list()
-        print("model_list_response:", model_list_response)

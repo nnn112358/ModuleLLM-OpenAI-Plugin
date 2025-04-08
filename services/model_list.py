@@ -65,6 +65,12 @@ class GetModelList:
                         elif '-0.5B-' in mode:
                             new_entry['memory_required'] = 560460
                             new_entry['pool_size'] = 2
+                        else:
+                            new_entry['memory_required'] = 1363148
+                            new_entry['pool_size'] = 2
+
+                        if '-p256-' in mode:
+                            new_entry['max_context_length'] = 256
 
                     elif model_type == 'tts':
                         if 'melotts' in mode.lower():

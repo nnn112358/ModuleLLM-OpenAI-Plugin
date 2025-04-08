@@ -110,22 +110,3 @@ class LLMClient:
         with self._lock:
             if not self.sock:
                 self._connect()
-
-if __name__ == "__main__":
-    with LLMClient(host='192.168.20.183') as client:
-        setup_response = client.setup("llm.setup", {
-            "model": "Qwen2.5-0.5B-w8a16",
-            "response_format": "llm.utf-8.stream",
-            "input": "llm.utf-8",
-            "enoutput": True,
-            "max_token_len": 1023,
-            "prompt": "You are a helpful assistant"
-        })
-        print("Setup response:", setup_response)
-
-        for chunk in client.inference_stream("Tell me a story"):
-            print("Received chunk:", chunk)
-            client.stop_inference()
-
-        exit_response = client.exit()
-        print("Exit response:", exit_response)

@@ -1,17 +1,14 @@
 import os
 import uuid
 import yaml
-from fastapi import FastAPI, Request, HTTPException, File, Form, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
 import logging
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 import time
 import json
 import asyncio
 
+from fastapi import FastAPI, Request, HTTPException, File, Form, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 from backend import (
-    TestBackend,
     OpenAIProxyBackend,
     LlmClientBackend,
     VisionModelBackend,
@@ -34,7 +31,6 @@ logging.basicConfig(
 logger = logging.getLogger("api")
 
 app = FastAPI(title="OpenAI Compatible API Server")
-limiter = Limiter(key_func=get_remote_address)
 
 class Config:
     def __init__(self):
@@ -113,9 +109,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
             detail=f"Unsupported model: {body.model}"
         )
     
-    try:
-        print(f"Received request: {body.model_dump()}")
-        
+    try:        
         if body.stream:
             chunk_generator = await backend.generate(body)
             if not chunk_generator:
@@ -133,7 +127,6 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                             chunk_dict = chunk.model_dump()
                             
                         json_chunk = json.dumps(chunk_dict, ensure_ascii=False)
-                        print(f"Sending chunk: {json_chunk}")
                         yield f"data: {json_chunk}\n\n"
                 except asyncio.CancelledError:
                     logger.warning("Client disconnected early, terminating inference...")
@@ -150,7 +143,6 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
             )
         else:
             response = await backend.generate(body)
-            print(f"Sending response: {response}")
             return JSONResponse(content=response)
         
     except HTTPException as he:
