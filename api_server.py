@@ -38,6 +38,9 @@ class Config:
         config_path = os.path.join(current_dir, "config", "config.yaml")
         with open(config_path) as f:
             self.data = yaml.safe_load(f)
+        
+        tiktoken_cache_dir = os.path.join(current_dir, "cache")
+        os.environ["TIKTOKEN_CACHE_DIR"] = tiktoken_cache_dir
 
 config = Config()
 
@@ -75,8 +78,6 @@ class ModelDispatcher:
                             await old_instance.close()
                     self.backends[model_name] = LlmClientBackend(model_config)
                     self.llm_models.append(model_name)
-                elif model_config["type"] == "llama.cpp":
-                    self.backends[model_name] = TestBackend(model_config)
                 elif model_config["type"] == "vision_model":
                     self.backends[model_name] = VisionModelBackend(model_config)
                 elif model_config["type"] == "tts":
