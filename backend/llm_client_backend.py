@@ -68,6 +68,10 @@ class LlmClientBackend(BaseModelBackend):
 
                 if len(self._active_clients) < self.POOL_SIZE:
                     break
+                
+                for task in self._active_tasks:
+                    task.cancel()
+                # Will interrupt the activated client inference
 
                 self._pool_lock.release()
                 await asyncio.sleep(retry_interval)
@@ -134,8 +138,7 @@ class LlmClientBackend(BaseModelBackend):
             
             loop = asyncio.get_event_loop()
             for i, image_data in enumerate(base64_images):
-                message = client.send_jpeg(image_data, object_type="vlm.jpeg.base64")
-                print(f"Sending JPEG data #{i+1}: {message[:20]}...")
+                client.send_jpeg(image_data, object_type="vlm.jpeg.base64")
             
             sync_gen = client.inference_stream(
                 query,
