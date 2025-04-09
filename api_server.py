@@ -70,6 +70,13 @@ class ModelDispatcher:
                 if model_config["type"] == "openai_proxy":
                     self.backends[model_name] = OpenAIProxyBackend(model_config)
                 elif model_config["type"] in ("llm", "vlm"):
+                    logger.debug(f"self.llm_models: {self.llm_models}")
+                    if self.llm_models and model_name not in self.llm_models:
+                        for old_model in self.llm_models:
+                            old_instance = self.backends.pop(old_model, None)
+                            if old_instance:
+                                await old_instance.close()
+                        self.llm_models.clear()
                     count = model_config["pool_size"]
                     while len(self.llm_models) >= count:
                         oldest_model = self.llm_models.pop(0)

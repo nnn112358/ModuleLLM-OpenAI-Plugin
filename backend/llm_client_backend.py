@@ -123,6 +123,8 @@ class LlmClientBackend(BaseModelBackend):
 
     async def close(self):
         async with self._pool_lock:
+            for task in self._active_tasks:
+                task.cancel()
             for client in self._client_pool:
                 client.exit()
             self._client_pool.clear()
