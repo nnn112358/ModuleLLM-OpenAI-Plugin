@@ -123,14 +123,15 @@ class LlmClientBackend(BaseModelBackend):
             self.logger.debug(f"Returned client to pool | ID:{id(client)}")
 
     async def close(self):
-        async with self._pool_lock:
-            for task in self._active_tasks:
-                task.cancel()
-            for client in self._client_pool:
-                client.exit()
-            self._client_pool.clear()
-            self._active_clients.clear()
-            self._inference_executor.shutdown(wait=True)
+        for task in self._active_tasks:
+            task.cancel()
+        for client in self._active_clients.values():
+            client.exit()
+        for client in self._client_pool:
+            client.exit()
+        self._client_pool.clear()
+        self._active_clients.clear()
+        self._inference_executor.shutdown(wait=False)
 
     async def inference_stream(self, query: str, base64_images: list, request: ChatCompletionRequest):
         client = await self._get_client(request)

@@ -58,7 +58,7 @@ async def auth_middleware(request: Request, call_next):
 class ModelDispatcher:
     def __init__(self):
         self.backends = {}
-        self.llm_models = []
+        self.llm_models = set()
         self.lock = asyncio.Lock()
 
     async def get_backend(self, model_name):
@@ -70,21 +70,14 @@ class ModelDispatcher:
                 if model_config["type"] == "openai_proxy":
                     self.backends[model_name] = OpenAIProxyBackend(model_config)
                 elif model_config["type"] in ("llm", "vlm"):
-                    logger.debug(f"self.llm_models: {self.llm_models}")
-                    if self.llm_models and model_name not in self.llm_models:
-                        for old_model in self.llm_models:
-                            old_instance = self.backends.pop(old_model, None)
+                    if model_name not in self.llm_models:
+                        for old_model_name in list(self.llm_models):
+                            old_instance = self.backends.pop(old_model_name, None)
                             if old_instance:
                                 await old_instance.close()
                         self.llm_models.clear()
-                    count = model_config["pool_size"]
-                    while len(self.llm_models) >= count:
-                        oldest_model = self.llm_models.pop(0)
-                        old_instance = self.backends.pop(oldest_model, None)
-                        if old_instance:
-                            await old_instance.close()
                     self.backends[model_name] = LlmClientBackend(model_config)
-                    self.llm_models.append(model_name)
+                    self.llm_models.add(model_name)
                 elif model_config["type"] == "vision_model":
                     self.backends[model_name] = VisionModelBackend(model_config)
                 elif model_config["type"] == "tts":
