@@ -125,8 +125,8 @@ class LlmClientBackend(BaseModelBackend):
     async def close(self):
         for task in self._active_tasks:
             task.cancel()
-        for client in self._active_clients.values():
-            client.exit()
+        if self._active_tasks:
+            await asyncio.wait(self._active_tasks, timeout=2)
         for client in self._client_pool:
             client.exit()
         self._client_pool.clear()
