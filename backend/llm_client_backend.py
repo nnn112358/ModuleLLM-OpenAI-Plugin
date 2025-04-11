@@ -114,7 +114,8 @@ class LlmClientBackend(BaseModelBackend):
         except asyncio.TimeoutError:
             raise RuntimeError("Server busy, please try again later.")
         finally:
-            self._pool_lock.release()
+            if self._pool_lock.locked():
+                self._pool_lock.release()
 
     async def _release_client(self, client):
         async with self._pool_lock:

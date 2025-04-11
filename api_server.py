@@ -139,8 +139,9 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                 except asyncio.CancelledError:
                     logger.warning("Client disconnected early, terminating inference...")
                     if backend and isinstance(backend, LlmClientBackend):
-                        for task in backend._active_tasks:
-                            task.cancel()
+                        current_task = asyncio.current_task()
+                        if current_task in backend._active_tasks:
+                            current_task.cancel()
                     raise
                 finally:
                     logger.debug("Stream connection closed")
