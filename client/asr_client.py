@@ -52,7 +52,31 @@ class ASRClient:
         logger.debug(
             f"Sending request: [ID:{request_id}] "
             f"Action:{action} WorkID:{payload['work_id']}\n"
-            f"Data: {str(data)[:100]}..."
+            f"Data: {str(data)[:20]}..."
+        )
+        
+        self.sock.sendall(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
+        return request_id
+    
+    def _send_request_stream(self, action: str, object: str, delta: str, index: int, finish: bool) -> str:
+        request_id = str(uuid.uuid4())
+        object_type = object.split('.')[0] if '.' in object else "llm"
+        payload = {
+            "request_id": request_id,
+            "work_id": self.work_id or object_type,
+            "action": action,
+            "object": object,
+            "data": {
+                "delta": delta,
+                "index": index,
+                "finish": finish
+            }
+        }
+
+        logger.debug(
+            f"Sending streaming request: [ID:{request_id}] "
+            f"Action:{action} WorkID:{payload['work_id']}\n"
+            f"Delta: {delta[:20]}... Index: {index} Finish: {finish}"
         )
         
         self.sock.sendall(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
@@ -68,6 +92,17 @@ class ASRClient:
         request_id = self._send_request("inference", object_type, query)
         
         while True:
+            response = json.loads(self.sock.recv(4096).decode())
+            if response["request_id"] != request_id:
+                continue
+                
+            yield response["data"]
+            break
+
+    def inference_stream(self, delta: str, index: int, finish: bool, object_type: str = "asr.base64") -> Generator[str, None, None]:
+        request_id = self._send_request_stream("inference", object_type, delta, index, finish)
+
+        while finish:
             response = json.loads(self.sock.recv(4096).decode())
             if response["request_id"] != request_id:
                 continue

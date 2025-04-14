@@ -34,6 +34,7 @@ class ASRClientBackend(BaseModelBackend):
             while True:
                 if self._client_pool:
                     client = self._client_pool.pop()
+                    self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
                     return client
                 
                 for task in self._active_tasks:
@@ -45,6 +46,7 @@ class ASRClientBackend(BaseModelBackend):
                 
             # if "memory_required" in self.config:
             #     await self.memory_checker.check_memory(self.config["memory_required"])
+                self.logger.debug("Creating new LLM client")
                 client = ASRClient(
                     host=self.config["host"],
                     port=self.config["port"]
@@ -74,6 +76,7 @@ class ASRClientBackend(BaseModelBackend):
     async def _release_client(self, client):
         async with self._pool_lock:
             self._client_pool.append(client)
+            self.logger.debug(f"Returned client to pool | ID:{id(client)}")
  
     async def _inference(self, client, audio_b64: str):
         loop = asyncio.get_event_loop()
@@ -92,7 +95,24 @@ class ASRClientBackend(BaseModelBackend):
         self._active_tasks.add(task)
         try:
             audio_b64 = base64.b64encode(audio_data).decode('utf-8')
-            return await self._inference(client, audio_b64)
+            chunk_size = 1024
+            audio_chunks = [
+                audio_b64[i:i + chunk_size] for i in range(0, len(audio_b64), chunk_size)
+            ]
+            
+            transcription = ""
+            for index, chunk in enumerate(audio_chunks):
+                finish = index == len(audio_chunks) - 1
+                
+                responses = list(client.inference_stream(
+                    delta=chunk,
+                    index=index,
+                    finish=finish,
+                    object_type="asr.base64.stream"
+                ))
+                transcription += "".join(responses)
+            
+            return transcription
         except asyncio.CancelledError:
             self.logger.warning("Inference task cancelled, stopping...")
             client.stop_inference()
