@@ -2,10 +2,11 @@ import json
 import socket
 import time
 import uuid
-from typing import Generator
+from typing import Generator, AsyncGenerator
 import logging
 import threading
 import base64
+import asyncio
 
 logger = logging.getLogger("tts_client")
 logger.setLevel(logging.DEBUG)
@@ -65,18 +66,20 @@ class TTSClient:
         request_id = self._send_request("setup", object, model_config)
         return self._wait_response(request_id)
 
-    def inference_stream(self, query: str, object_type: str = "llm.utf-8") -> Generator[str, None, None]:
+    async def inference_stream(self, query: str, object_type: str = "llm.utf-8") -> AsyncGenerator[str, None]:
         request_id = self._send_request("inference", object_type, query)
         buffer = b''
-        
+
+        loop = asyncio.get_event_loop()
+
         while True:
             start_time = time.time()
             while time.time() - start_time < 3600:
-                chunk = self.sock.recv(4096)
+                chunk = await loop.run_in_executor(None, self.sock.recv, 4096)
                 if not chunk:
                     break
                 buffer += chunk
-                
+
                 while b'\n' in buffer:
                     line, buffer = buffer.split(b'\n', 1)
                     try:

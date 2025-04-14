@@ -220,23 +220,45 @@ async def create_completion(request: Request, body: CompletionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/audio/speech")
-async def create_speech(request: Request):
+async def create_speech(
+    request: Request,
+):
     try:
         request_data = await request.json()
-        backend = await _dispatcher.get_backend(request_data.get("model"))
+        model = request_data.get("model")
+        voice = request_data.get("voice", "alloy")
+        response_format = request_data.get("response_format", "mp3")
+
+        if not model:
+            raise HTTPException(
+                status_code=400,
+                detail="Model is required for speech generation"
+            )
+
+        backend = await _dispatcher.get_backend(model)
         if not backend:
-            raise HTTPException(status_code=400, detail="Unsupported model")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported model: {model}"
+            )
+
+        input_text = request_data.get("input")
+        if not input_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Input text is required for speech generation"
+            )
 
         audio_stream = backend.generate_speech(
-            input_text=request_data.get("input"),
-            voice=request_data.get("voice", "alloy"),
-            format=request_data.get("response_format", "mp3")
+            input_text=input_text,
+            voice=voice,
+            format=response_format
         )
 
         return StreamingResponse(
             audio_stream,
-            media_type=f"audio/{request_data.get('response_format', 'mp3')}",
-            headers={"Content-Disposition": f'attachment; filename="speech.{request_data.get("response_format", "mp3")}"'}
+            media_type=f"audio/{response_format}",
+            headers={"Content-Disposition": f'attachment; filename="speech.{response_format}"'}
         )
     except Exception as e:
         logger.error(f"Speech generation error: {str(e)}")

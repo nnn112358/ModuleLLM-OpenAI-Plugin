@@ -39,7 +39,6 @@ class ASRClientBackend(BaseModelBackend):
                 for task in self._active_tasks:
                     task.cancel()
                 
-                
                 self._pool_lock.release()
                 await asyncio.sleep(retry_interval)
                 await asyncio.wait_for(self._pool_lock.acquire(), timeout=timeout - (time.time() - start_time))
