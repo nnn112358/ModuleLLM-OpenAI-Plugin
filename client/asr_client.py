@@ -5,7 +5,6 @@ import uuid
 from typing import Generator
 import logging
 import threading
-import base64
 
 logger = logging.getLogger("asr_client")
 logger.setLevel(logging.DEBUG)
@@ -65,7 +64,7 @@ class ASRClient:
         request_id = self._send_request("setup", object, model_config)
         return self._wait_response(request_id)
 
-    def inference_stream(self, query: str, object_type: str = "asr.base64") -> Generator[str, None, None]:
+    def inference(self, query: str, object_type: str = "asr.base64") -> Generator[str, None, None]:
         request_id = self._send_request("inference", object_type, query)
         
         while True:
@@ -101,20 +100,3 @@ class ASRClient:
         with self._lock:
             if not self.sock:
                 self._connect()
-
-    def create_transcription(self, audio_data: bytes, language: str = "zh") -> str:
-        audio_b64 = base64.b64encode(audio_data).decode('utf-8')
-        
-        self.setup("whisper.setup", {
-            "model": "whisper-tiny",
-            "response_format": "asr.utf-8",
-            "input": "whisper.base64",
-            "language": language,
-            "enoutput": True,
-        })
-        
-        full_text = ""
-        for chunk in self.inference_stream(audio_b64, object_type="asr.base64"):
-            full_text += chunk
-            
-        return full_text

@@ -95,7 +95,7 @@ class LlmClientBackend(BaseModelBackend):
 
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                None, 
+                None,
                 lambda: client.setup(
                     self.config["object"],
                     {

@@ -106,7 +106,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
     backend = await _dispatcher.get_backend(body.model)
     if not backend:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Unsupported model: {body.model}"
         )
     
@@ -250,19 +250,20 @@ async def create_transcription(
     prompt: str = Form(""),
     response_format: str = Form("json")
 ):
-    try:
-        backend = await _dispatcher.get_backend(model)
-        if not backend:
-            raise HTTPException(status_code=400, detail="Unsupported model")
+    backend = await _dispatcher.get_backend(model)
+    if not backend:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported model: {model}"
+        )
 
+    try:
         audio_data = await file.read()
-        
         transcription = await backend.create_transcription(
             audio_data,
             language=language,
             prompt=prompt
         )
-
         return JSONResponse(content={
             "text": transcription,
             "task": "transcribe",
