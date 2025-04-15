@@ -37,6 +37,9 @@ class ASRClientBackend(BaseModelBackend):
                     self.logger.debug(f"Reusing client from pool | ID:{id(client)}")
                     return client
                 
+                if len(self._active_clients) < self.POOL_SIZE:
+                    break
+                
                 for task in self._active_tasks:
                     task.cancel()
                 
@@ -44,29 +47,29 @@ class ASRClientBackend(BaseModelBackend):
                 await asyncio.sleep(retry_interval)
                 await asyncio.wait_for(self._pool_lock.acquire(), timeout=timeout - (time.time() - start_time))
                 
-            # if "memory_required" in self.config:
-            #     await self.memory_checker.check_memory(self.config["memory_required"])
-                self.logger.debug("Creating new LLM client")
-                client = ASRClient(
-                    host=self.config["host"],
-                    port=self.config["port"]
-                )
-                self._active_clients[id(client)] = client
+            if "memory_required" in self.config:
+                await self.memory_checker.check_memory(self.config["memory_required"])
+            self.logger.debug("Creating new LLM client")
+            client = ASRClient(
+                host=self.config["host"],
+                port=self.config["port"]
+            )
+            self._active_clients[id(client)] = client
 
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(
-                    None,
-                    client.setup,
-                    "whisper.setup",
-                    {
-                        "model": self.config["model_name"],
-                        "response_format": "asr.utf-8",
-                        "input": "whisper.base64.stream",
-                        "language": "zh",
-                        "enoutput": True
-                    }
-                )
-                return client
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(
+                None,
+                client.setup,
+                "whisper.setup",
+                {
+                    "model": self.config["model_name"],
+                    "response_format": "asr.utf-8",
+                    "input": "whisper.base64.stream",
+                    "language": "zh",
+                    "enoutput": True
+                }
+            )
+            return client
         except asyncio.TimeoutError:
             raise RuntimeError("Server busy, please try again later.")
         finally:
