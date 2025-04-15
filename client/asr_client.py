@@ -72,12 +72,6 @@ class ASRClient:
                 "finish": finish
             }
         }
-
-        logger.debug(
-            f"Sending streaming request: [ID:{request_id}] "
-            f"Action:{action} WorkID:{payload['work_id']}\n"
-            f"Delta: {delta[:20]}... Index: {index} Finish: {finish}"
-        )
         
         self.sock.sendall(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
         return request_id

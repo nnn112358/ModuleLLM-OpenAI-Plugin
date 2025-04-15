@@ -61,7 +61,7 @@ class ASRClientBackend(BaseModelBackend):
                     {
                         "model": self.config["model_name"],
                         "response_format": "asr.utf-8",
-                        "input": "whisper.base64",
+                        "input": "whisper.base64.stream",
                         "language": "zh",
                         "enoutput": True
                     }
