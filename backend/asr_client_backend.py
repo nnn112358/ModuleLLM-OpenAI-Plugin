@@ -64,7 +64,7 @@ class ASRClientBackend(BaseModelBackend):
                 {
                     "model": self.config["model_name"],
                     "response_format": "asr.utf-8",
-                    "input": "whisper.base64.stream",
+                    "input": "whisper.wav.stream.base64",
                     "language": "zh",
                     "enoutput": True
                 }
@@ -111,7 +111,7 @@ class ASRClientBackend(BaseModelBackend):
                     delta=chunk,
                     index=index,
                     finish=finish,
-                    object_type="asr.base64.stream"
+                    object_type="asr.wav.stream.base64"
                 ))
                 transcription += "".join(responses)
                 await asyncio.sleep(0.002)
