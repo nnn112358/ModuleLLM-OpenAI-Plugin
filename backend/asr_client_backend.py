@@ -95,7 +95,7 @@ class ASRClientBackend(BaseModelBackend):
         self._active_tasks.add(task)
         try:
             audio_b64 = base64.b64encode(audio_data).decode('utf-8')
-            chunk_size = 1024
+            chunk_size = 4096
             audio_chunks = [
                 audio_b64[i:i + chunk_size] for i in range(0, len(audio_b64), chunk_size)
             ]
@@ -111,6 +111,7 @@ class ASRClientBackend(BaseModelBackend):
                     object_type="asr.base64.stream"
                 ))
                 transcription += "".join(responses)
+                await asyncio.sleep(0.002)
             
             return transcription
         except asyncio.CancelledError:
