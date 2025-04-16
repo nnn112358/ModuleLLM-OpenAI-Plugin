@@ -6,3 +6,4 @@ pydub
 numpy
 python-multipart
 uvicorn
+tiktoken

@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 3. Start the server:
 ```bash
-python main.py
+python3 api_server.py 
 ```
 
 ## Supported Endpoints
@@ -86,14 +86,15 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \
 
 ### Speech Synthesis
 ```bash
-curl -X POST "http://localhost:8000/v1/audio/speech" \
--H "Content-Type: application/json" \
--H "Authorization: Bearer YOUR_KEY" \
--d '{
-  "model": "melotts",
-  "input": "Hello world!",
-  "voice": "alloy"
-}'
+curl -X POST "http://localhost:8001/v1/audio/speech" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -d '{
+    "model": "melotts_zh-cn",
+    "input": "Hello world!",
+    "voice": "alloy"
+  }' \
+  --output output.mp3
 ```
 
 ## Required Libraries:
