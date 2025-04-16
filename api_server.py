@@ -61,6 +61,7 @@ class ModelDispatcher:
     def __init__(self):
         self.backends = {}
         self.llm_models = set()
+        self.asr_models = set()
         self.lock = asyncio.Lock()
 
     async def get_backend(self, model_name):
@@ -85,7 +86,14 @@ class ModelDispatcher:
                 elif model_config["type"] == "tts":
                     self.backends[model_name] = TtsClientBackend(model_config)
                 elif model_config["type"] == "asr":
+                    if model_name not in self.asr_models:
+                        for old_model_name in list(self.asr_models):
+                            old_instance = self.backends.pop(old_model_name, None)
+                            if old_instance:
+                                await old_instance.close()
+                        self.asr_models.clear()
                     self.backends[model_name] = ASRClientBackend(model_config)
+                    self.asr_models.add(model_name)
                 else:
                     return None
             return self.backends.get(model_name)

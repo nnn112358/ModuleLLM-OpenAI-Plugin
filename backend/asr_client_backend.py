@@ -81,6 +81,17 @@ class ASRClientBackend(BaseModelBackend):
             self._client_pool.append(client)
             self.logger.debug(f"Returned client to pool | ID:{id(client)}")
  
+    async def close(self):
+        for task in self._active_tasks:
+            task.cancel()
+        if self._active_tasks:
+            await asyncio.wait(self._active_tasks, timeout=2)
+        for client in self._client_pool:
+            client.exit()
+        self._client_pool.clear()
+        self._active_clients.clear()
+        self._inference_executor.shutdown(wait=False)
+
     async def _inference(self, client, audio_b64: str):
         loop = asyncio.get_event_loop()
         for chunk in await loop.run_in_executor(
