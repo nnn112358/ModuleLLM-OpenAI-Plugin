@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 3. Start the server:
 ```bash
-python main.py
+python3 api_server.py 
 ```
 
 ## Supported Endpoints
