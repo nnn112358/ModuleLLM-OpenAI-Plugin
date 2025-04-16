@@ -90,7 +90,7 @@ curl -X POST "http://localhost:8000/v1/audio/speech" \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer YOUR_KEY" \
 -d '{
-  "model": "melotts",
+  "model": "melotts_zh-cn",
   "input": "Hello world!",
   "voice": "alloy"
 }'
