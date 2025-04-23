@@ -82,6 +82,17 @@ class TtsClientBackend(BaseModelBackend):
         async with self._pool_lock:
             self._client_pool.append(client)
 
+    async def close(self):
+        for task in self._active_tasks:
+            task.cancel()
+        if self._active_tasks:
+            await asyncio.wait(self._active_tasks, timeout=2)
+        for client in self._client_pool:
+            client.exit()
+        self._client_pool.clear()
+        self._active_clients.clear()
+        self._inference_executor.shutdown(wait=False)
+
     def _encode_stream_chunk(self, pcm_data: bytes, format: str) -> bytes:
         if format == "pcm":
             return pcm_data
